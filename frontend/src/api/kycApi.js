@@ -9,6 +9,10 @@ export const getMonStatutKYC = () => axiosInstance.get("/kyc/statut");
 
 export const getDossiersKYCEnAttente = () => axiosInstance.get("/kyc/en-attente");
 
+export const getDossiersKYCIncomplets = () => axiosInstance.get("/kyc/incomplets");
+
+export const relancerKYC = (userId) => axiosInstance.post(`/kyc/${userId}/relancer`);
+
 export const validerKYC = (userId) => axiosInstance.patch(`/kyc/${userId}/valider`);
 
 export const rejeterKYC = (userId, motif) =>

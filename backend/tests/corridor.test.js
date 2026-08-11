@@ -24,10 +24,14 @@ const FakeCorridor = {
     ) || null,
 };
 
+const FakeUser = { find: async () => [] };
+const FakeNotification = { create: async () => ({}) };
+
 mock("../models/Livraison", FakeLivraison);
 mock("../models/Corridor", FakeCorridor);
-mock("../models/User", {});
+mock("../models/User", FakeUser);
 mock("../models/Document", {});
+mock("../models/Notification", FakeNotification);
 
 const controllerPath = require.resolve("../controllers/livraisonController");
 delete require.cache[controllerPath];

@@ -86,6 +86,17 @@ gratuitement (MongoDB Atlas + Render + Vercel), sans carte bancaire.
   à l'audit) — change manuellement le champ `role` d'un utilisateur existant en `"admin"`
   dans MongoDB
 
+## Retours associés intégrés (08/08/2026)
+
+- **Upload réel de documents KYC** — la page KYC accepte maintenant un vrai fichier (photo/PDF) envoyé depuis le navigateur, plus besoin de coller un lien
+- **Documents consultables par l'admin** — chaque document déposé s'affiche en aperçu cliquable dans le tableau de bord admin
+- **Relance KYC** — l'admin peut relancer manuellement un transporteur au dossier incomplet (notification), et un script `jobs/relancerKYCManquant.js` permet de le faire en masse (à brancher sur un cron)
+- **Mesure associée** — un transporteur ne peut plus accepter de mission tant que son dossier KYC n'est pas validé
+- **Recherche par téléphone** — barre de recherche dans la liste des utilisateurs du tableau de bord admin
+- **Réduction du temps d'attente client** — tous les transporteurs actifs et au KYC validé sont notifiés dès qu'une nouvelle demande est créée, plutôt que de compter sur eux pour consulter la bourse de fret
+
+⚠️ **Important pour le site déjà déployé** : cette mise à jour introduit une règle plus stricte — un transporteur doit avoir son KYC validé pour accepter une mission. Si tu redéploies cette version sur ton site en ligne existant, les transporteurs déjà inscrits (comme ceux utilisés lors des démonstrations) ne pourront plus accepter de mission tant que tu n'auras pas validé leur dossier KYC dans le tableau de bord admin.
+
 ## Modules fonctionnels
 
 | Module | Contenu |

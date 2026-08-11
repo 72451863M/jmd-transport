@@ -34,7 +34,10 @@ initSocket(io);
 
 // Middlewares
 app.use(cors({ origin: process.env.CLIENT_URL || "http://localhost:5173" }));
-app.use(express.json());
+// Limite augmentée (par défaut 100kb) pour accepter les documents KYC et
+// preuves de livraison envoyés en base64 depuis le navigateur (jusqu'à 4 Mo
+// de fichier d'origine, un peu plus une fois encodé en base64).
+app.use(express.json({ limit: "8mb" }));
 app.use(express.urlencoded({ extended: true }));
 
 // Routes API

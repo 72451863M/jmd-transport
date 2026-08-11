@@ -100,6 +100,28 @@ const creerLivraison = async (req, res) => {
       statutDouane: estTransfrontalier ? "a_traiter_manuellement" : "non_applicable",
     });
 
+    // Retour associés du 08/08/2026 : réduire le temps d'attente du client en
+    // prévenant activement les transporteurs disponibles plutôt que de
+    // compter uniquement sur eux pour consulter la bourse de fret. Seuls les
+    // transporteurs actifs et au KYC validé sont notifiés (ce sont les seuls
+    // qui peuvent réellement accepter la mission).
+    const transporteursDisponibles = await User.find({
+      role: "transporteur",
+      actif: true,
+      "kyc.statutGlobal": "valide",
+    });
+    await Promise.all(
+      transporteursDisponibles.map((t) =>
+        notifier({
+          destinataire: t._id,
+          type: "nouvelle_demande_disponible",
+          titre: "Nouvelle demande disponible",
+          message: `${livraison.adresseDepart.label} → ${livraison.adresseArrivee.label} (${livraison.poidsKg} kg, ${livraison.prix} FCFA). Premier arrivé, premier accepté.`,
+          lien: livraison._id.toString(),
+        })
+      )
+    );
+
     return res.status(201).json(livraison);
   } catch (error) {
     return res.status(500).json({ message: "Erreur serveur", error: error.message });
@@ -198,6 +220,15 @@ const accepterLivraison = async (req, res) => {
     }
     if (livraison.statut !== "en_attente") {
       return res.status(400).json({ message: "Cette livraison n'est plus disponible" });
+    }
+
+    // Mesure liée au KYC (retour associés du 08/08/2026) : un transporteur
+    // dont le dossier n'est pas encore validé ne peut pas accepter de mission
+    // — il a été relancé au préalable (Module 1, relancerKYC).
+    if (req.user.kyc?.statutGlobal !== "valide") {
+      return res.status(403).json({
+        message: "Ton dossier KYC doit être validé avant de pouvoir accepter une mission. Complète-le dans « Mon KYC ».",
+      });
     }
 
     livraison.transporteur = req.user._id;

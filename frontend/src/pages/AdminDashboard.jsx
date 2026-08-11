@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import axiosInstance from "../api/axiosInstance";
-import { getDossiersKYCEnAttente, validerKYC, rejeterKYC } from "../api/kycApi";
+import { getDossiersKYCEnAttente, getDossiersKYCIncomplets, relancerKYC, validerKYC, rejeterKYC } from "../api/kycApi";
 import { getReclamations, repondreReclamation } from "../api/reclamationApi";
 import { getStatistiques, getZonesPopulaires, getClassementTransporteurs } from "../api/biApi";
 
@@ -8,18 +8,21 @@ const AdminDashboard = () => {
   const [users, setUsers] = useState([]);
   const [livraisons, setLivraisons] = useState([]);
   const [dossiersKYC, setDossiersKYC] = useState([]);
+  const [dossiersIncomplets, setDossiersIncomplets] = useState([]);
   const [reclamations, setReclamations] = useState([]);
   const [statsBI, setStatsBI] = useState(null);
   const [zonesBI, setZonesBI] = useState(null);
   const [classementBI, setClassementBI] = useState([]);
+  const [rechercheTelephone, setRechercheTelephone] = useState("");
   const [chargement, setChargement] = useState(true);
 
   const charger = async () => {
     try {
-      const [resUsers, resLivraisons, resKYC, resReclamations, resStats, resZones, resClassement] = await Promise.all([
+      const [resUsers, resLivraisons, resKYC, resIncomplets, resReclamations, resStats, resZones, resClassement] = await Promise.all([
         axiosInstance.get("/users"),
         axiosInstance.get("/livraisons"),
         getDossiersKYCEnAttente(),
+        getDossiersKYCIncomplets(),
         getReclamations("ouverte"),
         getStatistiques(),
         getZonesPopulaires(),
@@ -28,6 +31,7 @@ const AdminDashboard = () => {
       setUsers(resUsers.data);
       setLivraisons(resLivraisons.data);
       setDossiersKYC(resKYC.data);
+      setDossiersIncomplets(resIncomplets.data);
       setReclamations(resReclamations.data);
       setStatsBI(resStats.data);
       setZonesBI(resZones.data);
@@ -63,6 +67,16 @@ const AdminDashboard = () => {
       charger();
     } catch (err) {
       window.alert(err.response?.data?.message || "Erreur lors du rejet");
+    }
+  };
+
+  const handleRelancerKYC = async (userId) => {
+    try {
+      const { data } = await relancerKYC(userId);
+      window.alert("Relance envoyée.");
+      charger();
+    } catch (err) {
+      window.alert(err.response?.data?.message || "Erreur lors de la relance");
     }
   };
 
@@ -189,9 +203,20 @@ const AdminDashboard = () => {
             <div key={u._id} className="card" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 10 }}>
               <div>
                 <strong>{u.nom}</strong> — {u.email} — <em>{u.role}</em>
-                <p style={{ fontSize: 13, color: "#777", margin: "4px 0 0" }}>
-                  Documents déposés : {u.kyc.documents.map((d) => d.type).join(", ")}
-                </p>
+                <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginTop: 6 }}>
+                  {u.kyc.documents.map((d) => (
+                    <a key={d.type} href={d.url} target="_blank" rel="noreferrer" style={{ textAlign: "center", fontSize: 12 }}>
+                      {d.url?.startsWith("data:image") ? (
+                        <img src={d.url} alt={d.type} style={{ width: 70, height: 55, objectFit: "cover", borderRadius: 4, border: "1px solid #ccc", display: "block" }} />
+                      ) : (
+                        <div style={{ width: 70, height: 55, borderRadius: 4, border: "1px solid #ccc", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                          📄
+                        </div>
+                      )}
+                      <span style={{ color: "#1a3c6e" }}>{d.type}</span>
+                    </a>
+                  ))}
+                </div>
               </div>
               <div style={{ display: "flex", gap: 8 }}>
                 <button className="btn" onClick={() => handleValiderKYC(u._id)}>Valider</button>
@@ -207,11 +232,43 @@ const AdminDashboard = () => {
         </>
       )}
 
+      {dossiersIncomplets.length > 0 && (
+        <>
+          <h3 style={{ marginBottom: 12, marginTop: 24 }}>Dossiers KYC incomplets ({dossiersIncomplets.length})</h3>
+          {dossiersIncomplets.map((u) => (
+            <div key={u._id} className="card" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 10 }}>
+              <div>
+                <strong>{u.nom}</strong> — {u.telephone} — <em>{u.role}</em>
+                <p style={{ fontSize: 13, color: "#cc5500", margin: "4px 0 0" }}>
+                  Manque : {u.documentsManquants.join(", ")}
+                </p>
+                {u.derniereRelanceLe && (
+                  <p style={{ fontSize: 12, color: "#999", margin: "2px 0 0" }}>
+                    Dernière relance : {new Date(u.derniereRelanceLe).toLocaleDateString()}
+                  </p>
+                )}
+              </div>
+              <button className="btn btn-secondary" onClick={() => handleRelancerKYC(u._id)}>
+                Relancer
+              </button>
+            </div>
+          ))}
+        </>
+      )}
+
       <h3 style={{ marginBottom: 12, marginTop: 24 }}>Utilisateurs</h3>
-      {users.map((u) => (
+      <input
+        placeholder="Rechercher par numéro de téléphone..."
+        value={rechercheTelephone}
+        onChange={(e) => setRechercheTelephone(e.target.value)}
+        style={{ width: "100%", marginBottom: 12, padding: "10px 12px" }}
+      />
+      {users
+        .filter((u) => !rechercheTelephone.trim() || (u.telephone || "").replace(/\s/g, "").includes(rechercheTelephone.trim().replace(/\s/g, "")))
+        .map((u) => (
         <div key={u._id} className="card" style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
           <div>
-            <strong>{u.nom}</strong> — {u.email} — <em>{u.role}</em>
+            <strong>{u.nom}</strong> — {u.telephone} — {u.email} — <em>{u.role}</em>
             {u.role === "transporteur" && u.scoreIA !== null && u.scoreIA !== undefined && (
               <span style={{ marginLeft: 10, fontSize: 13, color: "#555" }}>Score IA : {u.scoreIA}/100</span>
             )}
@@ -221,6 +278,9 @@ const AdminDashboard = () => {
           </button>
         </div>
       ))}
+      {rechercheTelephone.trim() && users.filter((u) => (u.telephone || "").replace(/\s/g, "").includes(rechercheTelephone.trim().replace(/\s/g, ""))).length === 0 && (
+        <p style={{ fontSize: 13, color: "#777" }}>Aucun utilisateur trouvé avec ce numéro.</p>
+      )}
 
       <h3 style={{ margin: "24px 0 12px" }}>Livraisons récentes</h3>
       {livraisons.slice(0, 10).map((l) => (

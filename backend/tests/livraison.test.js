@@ -38,12 +38,16 @@ const FakeUser = {
     }
     return u;
   },
+  findById: async (id) => usersDB[id] || null,
 };
+
+const FakeDocument = { create: async () => ({}) };
 
 const FakeNotification = { create: async () => ({}) };
 mock("../models/Notification", FakeNotification);
 mock("../models/Livraison", FakeLivraison); // chemin tel que vu depuis controllers/
 mock("../models/User", FakeUser);
+mock("../models/Document", FakeDocument);
 
 const controllerPath = require.resolve("../controllers/livraisonController");
 delete require.cache[controllerPath];
@@ -118,13 +122,29 @@ async function run() {
   assert(res._status === 400, "Impossible d'annuler une livraison déjà livrée");
 
   // --- Test 5 : accepterLivraison incrémente bien la statistique d'acceptation ---
-  usersDB["u_transp4"] = { _id: "u_transp4", statsFiabilite: { missionsAcceptees: 0 } };
-  livraisonsDB["liv_test5"] = makeLivraisonDoc({ _id: "liv_test5", client: "u_client", transporteur: null, statut: "en_attente" });
-  req = { params: { id: "liv_test5" }, user: { _id: "u_transp4", role: "transporteur" } };
+  usersDB["u_transp4"] = { _id: "u_transp4", statsFiabilite: { missionsAcceptees: 0 }, kyc: { statutGlobal: "valide" } };
+  usersDB["u_client"] = usersDB["u_client"] || { _id: "u_client", nom: "Client", telephone: "x" };
+  livraisonsDB["liv_test5"] = makeLivraisonDoc({ _id: "liv_test5", client: "u_client", transporteur: null, statut: "en_attente", adresseDepart: { label: "A" }, adresseArrivee: { label: "B" } });
+  req = { params: { id: "liv_test5" }, user: { _id: "u_transp4", role: "transporteur", kyc: { statutGlobal: "valide" } } };
   res = fakeRes();
   await accepterLivraison(req, res);
-  assert(livraisonsDB["liv_test5"].statut === "acceptee", "accepterLivraison passe le statut à acceptee");
+  assert(livraisonsDB["liv_test5"].statut === "acceptee", "accepterLivraison passe le statut à acceptee (KYC validé)");
   assert(usersDB["u_transp4"].statsFiabilite.missionsAcceptees === 1, "Statistique missionsAcceptees incrémentée");
+
+  // --- Test 6 : impossible d'accepter une mission sans KYC validé ---
+  livraisonsDB["liv_test6"] = makeLivraisonDoc({ _id: "liv_test6", client: "u_client", transporteur: null, statut: "en_attente", adresseDepart: { label: "A" }, adresseArrivee: { label: "B" } });
+  req = { params: { id: "liv_test6" }, user: { _id: "u_transp5", role: "transporteur", kyc: { statutGlobal: "en_attente_validation" } } };
+  res = fakeRes();
+  await accepterLivraison(req, res);
+  assert(res._status === 403, "Acceptation refusée si le KYC n'est pas validé");
+  assert(livraisonsDB["liv_test6"].statut === "en_attente", "Statut inchangé après refus KYC");
+
+  // --- Test 7 : refus aussi si le KYC n'a jamais été soumis (champ absent) ---
+  livraisonsDB["liv_test7"] = makeLivraisonDoc({ _id: "liv_test7", client: "u_client", transporteur: null, statut: "en_attente", adresseDepart: { label: "A" }, adresseArrivee: { label: "B" } });
+  req = { params: { id: "liv_test7" }, user: { _id: "u_transp6", role: "transporteur" } };
+  res = fakeRes();
+  await accepterLivraison(req, res);
+  assert(res._status === 403, "Acceptation refusée si aucun champ kyc n'existe encore");
 
   console.log(`\n${ok} tests réussis, ${fail} échoués`);
   process.exit(fail > 0 ? 1 : 0);

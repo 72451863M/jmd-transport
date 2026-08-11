@@ -81,6 +81,7 @@ const userSchema = new mongoose.Schema(
       valideParAdminId: { type: mongoose.Schema.Types.ObjectId, ref: "User", default: null },
       valideLe: { type: Date, default: null },
       motifRejet: { type: String, default: null },
+      derniereRelanceLe: { type: Date, default: null },
     },
     // Statistiques utilisées pour le calcul du score de fiabilité (transporteurs)
     // — Étape 2 / points validés le 04/08/2026

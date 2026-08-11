@@ -155,11 +155,86 @@ const rejeterKYC = async (req, res) => {
   }
 };
 
+// @desc    Liste des utilisateurs dont le dossier KYC est incomplet ou pas
+//          encore soumis (pour permettre à l'admin de les relancer)
+// @route   GET /api/kyc/incomplets
+// @access  Privé (admin)
+const getDossiersIncomplets = async (req, res) => {
+  try {
+    const users = await User.find({
+      "kyc.statutGlobal": { $in: ["non_soumis", "incomplet"] },
+      role: { $ne: "admin" }, // se relancer soi-même n'a pas de sens ; la demande visait les transporteurs
+    }).select("nom email telephone role kyc");
+
+    const resultat = users
+      .map((u) => {
+        const { complet, manquants } = verifierDossierComplet(u);
+        return { user: u, manquants };
+      })
+      .filter((r) => !r.manquants || r.manquants.length > 0)
+      .map((r) => ({
+        _id: r.user._id,
+        nom: r.user.nom,
+        email: r.user.email,
+        telephone: r.user.telephone,
+        role: r.user.role,
+        documentsManquants: r.manquants,
+        derniereRelanceLe: r.user.kyc.derniereRelanceLe,
+      }));
+
+    return res.status(200).json(resultat);
+  } catch (error) {
+    return res.status(500).json({ message: "Erreur serveur", error: error.message });
+  }
+};
+
+// @desc    Relancer manuellement un utilisateur pour compléter son dossier KYC
+// @route   POST /api/kyc/:userId/relancer
+// @access  Privé (admin)
+const relancerKYC = async (req, res) => {
+  try {
+    const user = await User.findById(req.params.userId);
+    if (!user) {
+      return res.status(404).json({ message: "Utilisateur introuvable" });
+    }
+
+    const { complet, manquants } = verifierDossierComplet(user);
+    if (complet) {
+      return res.status(400).json({ message: "Le dossier de cet utilisateur est déjà complet" });
+    }
+
+    user.kyc.derniereRelanceLe = new Date();
+    await user.save();
+
+    const LABELS = {
+      cni_nina: "carte d'identité (CNI/NINA)",
+      permis_conduire: "permis de conduire",
+      carte_grise: "carte grise",
+      rccm: "RCCM",
+      nif: "NIF",
+    };
+    const listeManquants = manquants.map((m) => LABELS[m] || m).join(", ");
+
+    await notifier({
+      destinataire: user._id,
+      type: "kyc_relance",
+      titre: "Dossier d'identité incomplet",
+      message: `Merci de compléter ton dossier KYC — il manque : ${listeManquants}. Un dossier incomplet limite l'accès à certaines fonctionnalités de la plateforme.`,
+    });
+
+    return res.status(200).json({ message: "Relance envoyée", manquants });
+  } catch (error) {
+    return res.status(500).json({ message: "Erreur serveur", error: error.message });
+  }
+};
+
 module.exports = {
   donnerConsentement,
   ajouterDocument,
   getMonStatutKYC,
   getDossiersEnAttente,
+  getDossiersIncomplets,
   validerKYC,
   rejeterKYC,
+  relancerKYC,
 };

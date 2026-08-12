@@ -32,6 +32,7 @@ mock("../models/Corridor", FakeCorridor);
 mock("../models/User", FakeUser);
 mock("../models/Document", {});
 mock("../models/Notification", FakeNotification);
+mock("../models/Parametre", { findById: async () => null, create: async (data) => data });
 
 const controllerPath = require.resolve("../controllers/livraisonController");
 delete require.cache[controllerPath];

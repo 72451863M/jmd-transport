@@ -1,4 +1,5 @@
 const User = require("../models/User");
+const Livraison = require("../models/Livraison");
 const { recalculerScoresIA } = require("../jobs/recalculerScoresIA");
 
 // @desc    Liste de tous les utilisateurs (admin)
@@ -87,4 +88,31 @@ const toggleUserStatus = async (req, res) => {
   }
 };
 
-module.exports = { getUsers, getTransporteurs, updatePosition, toggleUserStatus, declencherRecalculScoresIA };
+// @desc    Mes performances (Module 3 — « consulter ses performances »)
+// @route   GET /api/users/mes-performances
+// @access  Privé (transporteur)
+const getMesPerformances = async (req, res) => {
+  try {
+    const livraisonsLivrees = await Livraison.find({ transporteur: req.user._id, statut: "livree" });
+    const revenuTotalGenere = livraisonsLivrees.reduce((total, l) => total + (l.prix || 0), 0);
+
+    const s = req.user.statsFiabilite || {};
+    const noteMoyenne = s.nbNotes > 0 ? Math.round((s.sommeNotes / s.nbNotes) * 10) / 10 : null;
+
+    return res.status(200).json({
+      missionsCompletees: s.missionsCompletees || 0,
+      missionsAcceptees: s.missionsAcceptees || 0,
+      missionsAnnulees: s.missionsAnnuleesParTransporteur || 0,
+      noteMoyenne,
+      nbNotes: s.nbNotes || 0,
+      scoreFiabilite: typeof req.user.calculerScoreFiabilite === "function" ? req.user.calculerScoreFiabilite() : null,
+      scoreIA: req.user.scoreIA ?? null,
+      revenuTotalGenere,
+      nbLivraisonsLivrees: livraisonsLivrees.length,
+    });
+  } catch (error) {
+    return res.status(500).json({ message: "Erreur serveur", error: error.message });
+  }
+};
+
+module.exports = { getUsers, getTransporteurs, updatePosition, toggleUserStatus, declencherRecalculScoresIA, getMesPerformances };

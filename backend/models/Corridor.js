@@ -31,6 +31,21 @@ const corridorSchema = new mongoose.Schema(
       type: Boolean,
       default: true,
     },
+    // Module 24 (Administration — gestion des taxes) : champs facultatifs
+    // que l'admin peut renseigner une fois les vraies règles fiscales
+    // validées par un comptable/juriste pour ce corridor précis. Restent
+    // null tant que personne ne les a saisis — jamais de valeur par défaut
+    // inventée ici.
+    tauxTaxeDouane: {
+      type: Number,
+      default: null,
+      min: 0,
+      max: 1,
+    },
+    noteReglementaire: {
+      type: String,
+      default: null,
+    },
   },
   { timestamps: true }
 );

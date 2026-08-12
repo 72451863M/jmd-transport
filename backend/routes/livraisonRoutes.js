@@ -9,6 +9,7 @@ const {
   updateStatutLivraison,
   evaluerLivraison,
   livrerAvecPreuve,
+  getSuiviGPS,
 } = require("../controllers/livraisonController");
 const { getDocumentsLivraison, ajouterDocument } = require("../controllers/documentController");
 const { envoyerMessage, getMessagesLivraison } = require("../controllers/messageController");
@@ -27,5 +28,6 @@ router.get("/:id/documents", protect, getDocumentsLivraison);
 router.post("/:id/documents", protect, ajouterDocument);
 router.get("/:id/messages", protect, getMessagesLivraison);
 router.post("/:id/messages", protect, envoyerMessage);
+router.get("/:id/suivi-gps", protect, getSuiviGPS);
 
 module.exports = router;

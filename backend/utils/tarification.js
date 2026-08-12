@@ -54,11 +54,14 @@ function calculerPrixEstime({ distanceKm = 0, poidsKg = 0, optionExpress = false
   };
 }
 
-// Commission JMD Transport V1 — validée : 10 % du prix de la course.
+// Commission JMD Transport V1 — validée : 10 % du prix de la course par
+// défaut. Configurable par l'admin (Module 24) via Parametre.tauxCommission
+// — le taux par défaut ci-dessous ne sert que de repli si aucun paramètre
+// n'a encore été enregistré (installation neuve).
 const TAUX_COMMISSION = 0.10;
 
-function calculerCommission(prix) {
-  return Math.round((Number(prix) || 0) * TAUX_COMMISSION);
+function calculerCommission(prix, tauxCommission = TAUX_COMMISSION) {
+  return Math.round((Number(prix) || 0) * tauxCommission);
 }
 
 // Seuil de retard V1 — validé : alerte au-delà de 30 minutes de dépassement de l'ETA.

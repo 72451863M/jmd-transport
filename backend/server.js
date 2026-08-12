@@ -16,6 +16,10 @@ const notificationRoutes = require("./routes/notificationRoutes");
 const entrepriseRoutes = require("./routes/entrepriseRoutes");
 const corridorRoutes = require("./routes/corridorRoutes");
 const biRoutes = require("./routes/biRoutes");
+const vehiculeRoutes = require("./routes/vehiculeRoutes");
+const chauffeurRoutes = require("./routes/chauffeurRoutes");
+const parametreRoutes = require("./routes/parametreRoutes");
+const auditRoutes = require("./routes/auditRoutes");
 
 // Connexion à la base de données
 connectDB();
@@ -50,6 +54,10 @@ app.use("/api/notifications", notificationRoutes);
 app.use("/api/entreprises", entrepriseRoutes);
 app.use("/api/corridors", corridorRoutes);
 app.use("/api/bi", biRoutes);
+app.use("/api/vehicules", vehiculeRoutes);
+app.use("/api/chauffeurs", chauffeurRoutes);
+app.use("/api/parametres", parametreRoutes);
+app.use("/api/audit", auditRoutes);
 
 // Route de test
 app.get("/api/health", (req, res) => {

@@ -2,9 +2,13 @@ const Livraison = require("../models/Livraison");
 const User = require("../models/User");
 const Document = require("../models/Document");
 const Corridor = require("../models/Corridor");
+const Vehicule = require("../models/Vehicule");
 const { calculerPrixEstime, calculerCommission, estEnRetard } = require("../utils/tarification");
 const { notifier } = require("../utils/notifications");
 const { genererLettreDeVoiture } = require("../utils/documentGenerator");
+const { detecterArrets, detecterDeviationItineraire } = require("../utils/gpsTracking");
+const { TYPES_MARCHANDISE, LABELS_TYPES_MARCHANDISE, NECESSITE_DECLARATION, verifierCompatibiliteVehicule } = require("../utils/marchandises");
+const { recupererOuCreerParametres } = require("./parametreController");
 
 // Anti-désintermédiation : tant qu'une demande est en_attente (aucun
 // transporteur assigné), le téléphone du client n'est jamais montré à un
@@ -55,11 +59,29 @@ const creerLivraison = async (req, res) => {
       optionExpress,
       modePaiement,
       dateLivraisonPrevue,
+      typeMarchandise,
+      nombrePalettes,
+      declarationMarchandiseDangereuse,
     } = req.body;
 
     if (!adresseDepart?.label || !adresseArrivee?.label) {
       return res.status(400).json({
         message: "Adresse de départ et d'arrivée sont obligatoires",
+      });
+    }
+
+    // Module 6 — Gestion des marchandises : un type invalide est refusé
+    // plutôt que silencieusement ignoré, et les matières dangereuses /
+    // produits pétroliers exigent une déclaration explicite avant de
+    // pouvoir créer la demande (responsabilise l'expéditeur ; l'application
+    // ne prétend pas valider elle-même la conformité réglementaire réelle).
+    const type = typeMarchandise || "colis";
+    if (!TYPES_MARCHANDISE.includes(type)) {
+      return res.status(400).json({ message: "Type de marchandise invalide" });
+    }
+    if (NECESSITE_DECLARATION.includes(type) && !declarationMarchandiseDangereuse) {
+      return res.status(400).json({
+        message: `Le transport de "${LABELS_TYPES_MARCHANDISE[type]}" nécessite une déclaration explicite confirmant la conformité de la marchandise à la réglementation en vigueur.`,
       });
     }
 
@@ -72,7 +94,8 @@ const creerLivraison = async (req, res) => {
     // "Points ouverts avant l'Étape 1") — non modifiée ici pour ne pas
     // inventer un barème non validé.
     const { prix } = calculerPrixEstime({ distanceKm, poidsKg, optionExpress });
-    const commission = calculerCommission(prix);
+    const parametres = await recupererOuCreerParametres();
+    const commission = calculerCommission(prix, parametres.tauxCommission);
 
     const paysDepart = adresseDepart.pays || "Mali";
     const paysArrivee = adresseArrivee.pays || "Mali";
@@ -98,6 +121,9 @@ const creerLivraison = async (req, res) => {
       estTransfrontalier,
       corridor: corridor ? corridor._id : null,
       statutDouane: estTransfrontalier ? "a_traiter_manuellement" : "non_applicable",
+      typeMarchandise: type,
+      nombrePalettes: type === "palettes" ? Number(nombrePalettes) || null : null,
+      declarationMarchandiseDangereuse: NECESSITE_DECLARATION.includes(type) ? true : false,
     });
 
     // Retour associés du 08/08/2026 : réduire le temps d'attente du client en
@@ -231,6 +257,33 @@ const accepterLivraison = async (req, res) => {
       });
     }
 
+    // Gestion de flotte : le choix d'un véhicule est facultatif (un
+    // transporteur indépendant sans flotte enregistrée peut accepter sans),
+    // mais s'il en choisit un, on vérifie qu'il lui appartient bien et qu'il
+    // est actif.
+    const { vehiculeId } = req.body || {};
+    let vehiculeChoisi = null;
+    if (vehiculeId) {
+      vehiculeChoisi = await Vehicule.findById(vehiculeId);
+      if (!vehiculeChoisi || vehiculeChoisi.proprietaire.toString() !== req.user._id.toString()) {
+        return res.status(403).json({ message: "Ce véhicule ne fait pas partie de ta flotte" });
+      }
+      if (!vehiculeChoisi.actif) {
+        return res.status(400).json({ message: "Ce véhicule est désactivé" });
+      }
+    }
+
+    // Module 6 — Gestion des marchandises : certains types de fret exigent
+    // un véhicule adapté (ex. produits réfrigérés -> véhicule frigorifique).
+    const compatibilite = verifierCompatibiliteVehicule(livraison.typeMarchandise, vehiculeChoisi);
+    if (!compatibilite.compatible) {
+      return res.status(400).json({ message: compatibilite.message });
+    }
+
+    if (vehiculeChoisi) {
+      livraison.vehiculeUtilise = vehiculeChoisi._id;
+    }
+
     livraison.transporteur = req.user._id;
     livraison.statut = "acceptee";
     await livraison.save();
@@ -242,10 +295,11 @@ const accepterLivraison = async (req, res) => {
 
     // Module 11 — Génération automatique de la lettre de voiture
     const client = await User.findById(livraison.client);
+    const vehiculeFlotte = livraison.vehiculeUtilise ? await Vehicule.findById(livraison.vehiculeUtilise) : null;
     await Document.create({
       livraison: livraison._id,
       type: "lettre_voiture",
-      donneesGenerees: genererLettreDeVoiture(livraison, client, req.user),
+      donneesGenerees: genererLettreDeVoiture(livraison, client, req.user, vehiculeFlotte),
       ajoutePar: null, // document système, pas ajouté manuellement
     });
 
@@ -546,6 +600,43 @@ const livrerAvecPreuve = async (req, res) => {
   }
 };
 
+// @desc    Suivi GPS détaillé (Module 10) : position actuelle, itinéraire
+//          parcouru, arrêts détectés, retard, alerte de sortie d'itinéraire
+// @route   GET /api/livraisons/:id/suivi-gps
+// @access  Privé (client, transporteur assigné, ou admin)
+const getSuiviGPS = async (req, res) => {
+  try {
+    const livraison = await Livraison.findById(req.params.id);
+    if (!livraison) {
+      return res.status(404).json({ message: "Livraison introuvable" });
+    }
+
+    const estClient = livraison.client.toString() === req.user._id.toString();
+    const estTransporteur = livraison.transporteur && livraison.transporteur.toString() === req.user._id.toString();
+    if (!estClient && !estTransporteur && req.user.role !== "admin") {
+      return res.status(403).json({ message: "Vous n'êtes pas autorisé à consulter ce suivi" });
+    }
+
+    const positionsTrajet = livraison.positionsTrajet || [];
+    const positionActuelle = positionsTrajet.length > 0 ? positionsTrajet[positionsTrajet.length - 1] : null;
+
+    return res.status(200).json({
+      positionActuelle,
+      itineraireParcouru: positionsTrajet,
+      arrets: detecterArrets(positionsTrajet),
+      retard: {
+        detecte: !!livraison.retardDetecte,
+        dateLivraisonPrevue: livraison.dateLivraisonPrevue,
+      },
+      alerteDeviation: detecterDeviationItineraire(positionActuelle, livraison.adresseDepart, livraison.adresseArrivee),
+      adresseDepart: livraison.adresseDepart,
+      adresseArrivee: livraison.adresseArrivee,
+    });
+  } catch (error) {
+    return res.status(500).json({ message: "Erreur serveur", error: error.message });
+  }
+};
+
 module.exports = {
   estimerPrix,
   creerLivraison,
@@ -555,4 +646,5 @@ module.exports = {
   updateStatutLivraison,
   evaluerLivraison,
   livrerAvecPreuve,
+  getSuiviGPS,
 };

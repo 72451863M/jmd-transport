@@ -80,11 +80,15 @@ async function run() {
   assert(usersDB["u_client1"].entreprise.roleEntreprise === "proprietaire", "Le créateur devient propriétaire");
   const idEntreprise = res._json._id;
 
-  // Test 3 : un transporteur ne peut pas créer d'entreprise
-  req = { body: { raisonSociale: "Test" }, user: usersDB["u_transp1"] };
+  // Test 3 : un transporteur PEUT créer une entreprise (retour Module 3,
+  // 08/08/2026 — auparavant réservé aux clients, ouvert aux transporteurs
+  // pour qu'ils puissent « gérer leur entreprise » comme prévu au cahier des
+  // charges). Voir tests/entrepriseTransporteur.test.js pour la couverture
+  // détaillée de ce cas.
+  req = { body: { raisonSociale: "Test Transport" }, user: usersDB["u_transp1"] };
   res = fakeRes();
   await creerEntreprise(req, res);
-  assert(res._status === 403, "Un transporteur ne peut pas créer d'entreprise");
+  assert(res._status === 201, "Un transporteur peut créer une entreprise");
 
   // Test 4 : un client déjà affilié ne peut pas en recréer une
   req = { body: { raisonSociale: "Autre" }, user: usersDB["u_client1"] };

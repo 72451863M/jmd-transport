@@ -4,7 +4,7 @@
 // (Chapitre 5 du cahier des charges V3.0 : "Lettre de voiture, bons, facture,
 // assurance, permis, photos"). Rendu final (impression/PDF) laissé au
 // frontend, qui reçoit ces données structurées.
-function genererLettreDeVoiture(livraison, client, transporteur) {
+function genererLettreDeVoiture(livraison, client, transporteur, vehiculeFlotte) {
   return {
     reference: livraison._id.toString(),
     dateEmission: new Date(),
@@ -15,7 +15,17 @@ function genererLettreDeVoiture(livraison, client, transporteur) {
     transporteur: {
       nom: transporteur?.nom || null,
       telephone: transporteur?.telephone || null,
-      vehicule: transporteur?.vehicule || null,
+      // Priorité au véhicule de flotte choisi à l'acceptation (plus fiable,
+      // saisi par le transporteur lui-même) ; à défaut, le champ véhicule
+      // unique historique du compte transporteur.
+      vehicule: vehiculeFlotte
+        ? {
+            type: vehiculeFlotte.type,
+            immatriculation: vehiculeFlotte.immatriculation,
+            capaciteKg: vehiculeFlotte.capaciteKg,
+          }
+        : transporteur?.vehicule || null,
+      chauffeur: vehiculeFlotte?.nomChauffeur || null,
     },
     marchandise: {
       description: livraison.description || null,

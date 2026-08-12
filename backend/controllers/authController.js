@@ -1,5 +1,6 @@
 const User = require("../models/User");
 const generateToken = require("../utils/generateToken");
+const { enregistrerAudit } = require("../utils/audit");
 
 // @desc    Inscription d'un nouvel utilisateur
 // @route   POST /api/auth/register
@@ -70,6 +71,14 @@ const login = async (req, res) => {
     if (!user.actif) {
       return res.status(403).json({ message: "Ce compte a été désactivé" });
     }
+
+    await enregistrerAudit({
+      utilisateur: user._id,
+      typeAction: "connexion",
+      ressource: "User",
+      ressourceId: user._id,
+      description: `Connexion de ${user.nom} (${user.role})`,
+    });
 
     return res.status(200).json({
       _id: user._id,

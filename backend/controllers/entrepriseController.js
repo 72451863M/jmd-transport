@@ -12,8 +12,8 @@ const creerEntreprise = async (req, res) => {
     if (!raisonSociale) {
       return res.status(400).json({ message: "La raison sociale est obligatoire" });
     }
-    if (req.user.role !== "client") {
-      return res.status(403).json({ message: "Seul un compte client peut créer une entreprise" });
+    if (req.user.role !== "client" && req.user.role !== "transporteur") {
+      return res.status(403).json({ message: "Seul un compte client ou transporteur peut créer une entreprise" });
     }
     if (req.user.entreprise?.entrepriseId) {
       return res.status(400).json({ message: "Vous êtes déjà affilié à une entreprise" });
@@ -71,8 +71,10 @@ const ajouterCollaborateur = async (req, res) => {
     if (!collaborateur) {
       return res.status(404).json({ message: "Aucun compte trouvé avec cet email" });
     }
-    if (collaborateur.role !== "client") {
-      return res.status(400).json({ message: "Seul un compte client peut rejoindre une entreprise" });
+    if (collaborateur.role !== req.user.role) {
+      return res.status(400).json({
+        message: `Seul un compte du même type (${req.user.role}) que le propriétaire peut rejoindre cette entreprise`,
+      });
     }
     if (collaborateur.entreprise?.entrepriseId) {
       return res.status(400).json({ message: "Cet utilisateur est déjà affilié à une entreprise" });

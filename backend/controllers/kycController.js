@@ -1,6 +1,7 @@
 const User = require("../models/User");
 const { DOCUMENTS_REQUIS_PAR_ROLE, verifierDossierComplet } = require("../utils/kyc");
 const { notifier } = require("../utils/notifications");
+const { enregistrerAudit } = require("../utils/audit");
 
 // @desc    Enregistrer le consentement explicite avant toute collecte de
 //          pièce d'identité (obligatoire — Loi n°2013-015)
@@ -105,8 +106,14 @@ const validerKYC = async (req, res) => {
     user.kyc.motifRejet = null;
     await user.save();
 
-    // Traçabilité (Module 25 — Audit) : à brancher sur le futur journal d'audit centralisé.
-    console.log(`[AUDIT] KYC validé pour ${user.email} par admin ${req.user.email} le ${new Date().toISOString()}`);
+    // Traçabilité (Module 25 — Audit)
+    await enregistrerAudit({
+      utilisateur: req.user._id,
+      typeAction: "validation",
+      ressource: "KYC",
+      ressourceId: user._id,
+      description: `Dossier KYC validé pour ${user.email}`,
+    });
 
     await notifier({
       destinataire: user._id,
@@ -140,7 +147,13 @@ const rejeterKYC = async (req, res) => {
     user.kyc.valideLe = new Date();
     await user.save();
 
-    console.log(`[AUDIT] KYC rejeté pour ${user.email} par admin ${req.user.email} — motif : ${motif}`);
+    await enregistrerAudit({
+      utilisateur: req.user._id,
+      typeAction: "validation",
+      ressource: "KYC",
+      ressourceId: user._id,
+      description: `Dossier KYC rejeté pour ${user.email} — motif : ${motif}`,
+    });
 
     await notifier({
       destinataire: user._id,

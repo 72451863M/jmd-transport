@@ -35,6 +35,14 @@ const livraisonSchema = new mongoose.Schema(
       ref: "Corridor",
       default: null,
     },
+    // Gestion de flotte : véhicule choisi par le transporteur parmi les
+    // siens au moment de l'acceptation (facultatif — un transporteur
+    // indépendant sans flotte enregistrée peut accepter sans en choisir).
+    vehiculeUtilise: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Vehicule",
+      default: null,
+    },
     statutDouane: {
       type: String,
       enum: ["non_applicable", "a_traiter_manuellement"],
@@ -43,6 +51,20 @@ const livraisonSchema = new mongoose.Schema(
     description: {
       type: String,
       trim: true,
+    },
+    // Module 6 — Gestion des marchandises
+    typeMarchandise: {
+      type: String,
+      enum: ["colis", "palettes", "materiaux_construction", "produits_agricoles", "produits_petroliers", "produits_dangereux", "produits_refrigeres", "conteneurs"],
+      default: "colis",
+    },
+    nombrePalettes: {
+      type: Number,
+      default: null,
+    },
+    declarationMarchandiseDangereuse: {
+      type: Boolean,
+      default: false,
     },
     poidsKg: {
       type: Number,

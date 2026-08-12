@@ -42,11 +42,22 @@ const Navbar = () => {
           <Link to="/transporteur" style={{ color: "white" }}>Mes livraisons</Link>
         )}
         {user && user.role === "admin" && (
-          <Link to="/admin" style={{ color: "white" }}>Administration</Link>
+          <>
+            <Link to="/admin" style={{ color: "white" }}>Administration</Link>
+            <Link to="/admin/parametres" style={{ color: "white" }}>Paramètres</Link>
+            <Link to="/admin/audit" style={{ color: "white" }}>Journal d'audit</Link>
+          </>
         )}
 
-        {user && user.role === "client" && (
+        {user && (user.role === "client" || user.role === "transporteur") && (
           <Link to="/entreprise" style={{ color: "white" }}>Mon entreprise</Link>
+        )}
+        {user && user.role === "transporteur" && (
+          <>
+            <Link to="/flotte" style={{ color: "white" }}>Ma flotte</Link>
+            <Link to="/chauffeurs" style={{ color: "white" }}>Mes chauffeurs</Link>
+            <Link to="/performances" style={{ color: "white" }}>Mes performances</Link>
+          </>
         )}
         {user && (
           <>

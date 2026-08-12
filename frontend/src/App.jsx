@@ -13,6 +13,11 @@ import AdminDashboard from "./pages/AdminDashboard";
 import Tracking from "./pages/Tracking";
 import KYC from "./pages/KYC";
 import Entreprise from "./pages/Entreprise";
+import MaFlotte from "./pages/MaFlotte";
+import MesChauffeurs from "./pages/MesChauffeurs";
+import MesPerformances from "./pages/MesPerformances";
+import ParametresSysteme from "./pages/ParametresSysteme";
+import JournalAudit from "./pages/JournalAudit";
 
 function App() {
   return (
@@ -37,6 +42,51 @@ function App() {
           element={
             <PrivateRoute>
               <Entreprise />
+            </PrivateRoute>
+          }
+        />
+
+        <Route
+          path="/flotte"
+          element={
+            <PrivateRoute>
+              <MaFlotte />
+            </PrivateRoute>
+          }
+        />
+
+        <Route
+          path="/chauffeurs"
+          element={
+            <PrivateRoute>
+              <MesChauffeurs />
+            </PrivateRoute>
+          }
+        />
+
+        <Route
+          path="/performances"
+          element={
+            <PrivateRoute>
+              <MesPerformances />
+            </PrivateRoute>
+          }
+        />
+
+        <Route
+          path="/admin/parametres"
+          element={
+            <PrivateRoute>
+              <ParametresSysteme />
+            </PrivateRoute>
+          }
+        />
+
+        <Route
+          path="/admin/audit"
+          element={
+            <PrivateRoute>
+              <JournalAudit />
             </PrivateRoute>
           }
         />

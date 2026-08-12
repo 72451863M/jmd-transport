@@ -116,6 +116,12 @@ gratuitement (MongoDB Atlas + Render + Vercel), sans carte bancaire.
 | Messagerie interne | Anti-contournement : aucun numéro de téléphone échangé pendant la mission |
 | Corridors logistiques | Détection transfrontalière, corridors de référence UEMOA (sans invention de règles fiscales) |
 | Business Intelligence | Revenus, commissions, zones populaires, classement transporteurs |
+| Gestion de flotte | Un transporteur peut enregistrer plusieurs véhicules (immatriculation, type, capacité, chauffeur affecté), en choisir un à l'acceptation d'une mission — repris automatiquement sur la lettre de voiture |
+| Gestion des transporteurs | Module 3 du cahier des charges : un transporteur peut gérer son entreprise (RCCM/NIF, collaborateurs — auparavant réservé aux clients), gérer ses chauffeurs (fiche nom/téléphone/permis, indépendante des véhicules), et consulter ses performances (revenu généré, missions, note moyenne, scores) |
+| Suivi GPS | Module 10 : position en temps réel (WebSocket), carte visuelle (Leaflet/OpenStreetMap, gratuit, sans clé API), itinéraire parcouru affiché, détection automatique des arrêts, alerte de retard, alerte de sortie d'itinéraire poussée en temps réel — **limites assumées** : la déviation est calculée par rapport à une ligne droite départ→arrivée, pas au vrai réseau routier (aucun service de routage payant branché) ; seule l'adresse de départ peut être géolocalisée par le client (bouton « Utiliser ma position actuelle »), l'arrivée reste un texte libre sans coordonnées — l'alerte de déviation ne s'active donc que si les deux sont un jour renseignées |
+| Gestion des marchandises | Module 6 : les 8 types de fret du cahier des charges (colis, palettes, matériaux de construction, produits agricoles, produits pétroliers, produits dangereux, produits réfrigérés, conteneurs), avec de vraies règles vérifiées — compatibilité obligatoire entre le type de marchandise et le véhicule choisi (ex. produits réfrigérés → véhicule frigorifique, sinon acceptation refusée), déclaration explicite obligatoire pour les matières pétrolières/dangereuses avant de pouvoir créer la demande — **limite assumée** : pas de classification réglementaire réelle (ADR, température exacte...), la déclaration responsabilise l'expéditeur plutôt que de prétendre à une validation réglementaire que l'application ne peut pas faire |
+| Administration (paramètres système) | Module 24 : commission, pays actifs et devise réellement configurables par l'admin (auparavant fixés en dur dans le code) ; taxes par corridor enregistrables une fois validées par un comptable/juriste (jamais de taux inventé par défaut) ; page listant honnêtement les 3 rôles et ce que chacun peut faire — **limite assumée** : pas d'éditeur de permissions granulaire (les rôles restent fixes dans le code), pas de vraie conversion multi-devises (FCFA uniquement) |
+| Audit / traçabilité | Module 25 : journal d'audit centralisé (connexion, modification, suppression, validation — branché sur la connexion, la gestion de flotte/chauffeurs, les paramètres système, la validation KYC), non bloquant par conception (un souci d'écriture n'interrompt jamais l'action métier d'origine, testé en simulant une panne), consultable et filtrable par l'admin — **limite assumée** : la catégorie « paiement » existe dans le modèle mais reste vide, aucun paiement réel n'existe encore (Module 13) |
 
 ## Anti-contournement (désintermédiation)
 
@@ -125,15 +131,22 @@ la mission acceptée, les coordonnées se révèlent et la messagerie interne s'
 
 ## Ce qu'il reste à brancher avant un vrai lancement
 
-- 🔲 Upload de fichiers réel (Cloudinary ou équivalent) — actuellement KYC/documents/preuves
-  acceptent une URL saisie manuellement
+- 🔲 Stockage cloud des fichiers (Cloudinary ou équivalent) — l'upload fonctionne déjà
+  (photo/PDF envoyés en base64, stockés directement en base), mais un vrai service de
+  stockage externe serait plus adapté à grande échelle
 - 🔲 Intégration réelle Orange Money / Moov Money / Wave (API de paiement)
 - 🔲 Règles fiscales et douanières par pays (Module Corridors) — volontairement non inventées,
   à faire valider par un juriste/comptable pays par pays
 - 🔲 Application mobile Flutter (le frontend actuel est un site web)
 - 🔲 API partenaires (ERP, assurances, banques)
 - 🔲 Conditions d'utilisation anti-contournement (document juridique)
-- 🔲 Carte interactive (actuellement le suivi affiche les coordonnées + lien Google Maps)
+- 🔲 Géocodage d'adresse (convertir un texte comme « Sikasso centre » en coordonnées GPS
+  automatiquement) — nécessiterait un service comme Nominatim/Mapbox ; pour l'instant seul le
+  départ peut être géolocalisé, via la position GPS réelle du navigateur du client
+- 🔲 Service de routage réel (Google/Mapbox Directions) pour une détection de déviation basée
+  sur le vrai réseau routier plutôt qu'une ligne droite
+- 🔲 Comptes "chauffeur" séparés — un véhicule de la flotte a un chauffeur affecté en texte
+  libre, pas encore un vrai compte utilisateur distinct
 
 ## Notes techniques
 

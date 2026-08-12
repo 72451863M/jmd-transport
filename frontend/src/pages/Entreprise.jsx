@@ -55,10 +55,10 @@ const Entreprise = () => {
 
   if (chargement) return <div className="container" style={{ paddingTop: 30 }}><p>Chargement...</p></div>;
 
-  if (user?.role !== "client") {
+  if (user?.role !== "client" && user?.role !== "transporteur") {
     return (
       <div className="container" style={{ paddingTop: 30 }}>
-        <p>Cette section est réservée aux comptes client.</p>
+        <p>Cette section est réservée aux comptes client et transporteur.</p>
       </div>
     );
   }
@@ -105,7 +105,7 @@ const Entreprise = () => {
               <h3 style={{ marginBottom: 10, fontSize: 16 }}>Ajouter un collaborateur</h3>
               <form onSubmit={handleInviter} style={{ display: "flex", gap: 8 }}>
                 <input
-                  placeholder="Email d'un compte client existant"
+                  placeholder={`Email d'un compte ${user.role} existant`}
                   value={emailInvite}
                   onChange={(e) => setEmailInvite(e.target.value)}
                   style={{ flex: 1 }}

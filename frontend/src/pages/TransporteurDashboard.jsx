@@ -9,6 +9,7 @@ import {
 import { useAuth } from "../context/AuthContext";
 import EvaluationForm from "../components/EvaluationForm";
 import PreuveLivraisonForm from "../components/PreuveLivraisonForm";
+import { getMesVehicules } from "../api/vehiculeApi";
 
 const TransporteurDashboard = () => {
   const { user } = useAuth();
@@ -16,6 +17,8 @@ const TransporteurDashboard = () => {
   const [chargement, setChargement] = useState(true);
   const [erreur, setErreur] = useState("");
   const [monProfil, setMonProfil] = useState(null);
+  const [mesVehicules, setMesVehicules] = useState([]);
+  const [vehiculeSelectionne, setVehiculeSelectionne] = useState("");
 
   const charger = async () => {
     try {
@@ -25,6 +28,15 @@ const TransporteurDashboard = () => {
       setErreur("Impossible de charger les livraisons");
     } finally {
       setChargement(false);
+    }
+  };
+
+  const chargerMesVehicules = async () => {
+    try {
+      const { data } = await getMesVehicules();
+      setMesVehicules(data.filter((v) => v.actif));
+    } catch (err) {
+      // silencieux : facultatif, un transporteur peut ne pas avoir de flotte
     }
   };
 
@@ -41,11 +53,12 @@ const TransporteurDashboard = () => {
   useEffect(() => {
     charger();
     chargerMonScore();
+    chargerMesVehicules();
   }, []);
 
   const handleAccepter = async (id) => {
     try {
-      await accepterLivraison(id);
+      await accepterLivraison(id, vehiculeSelectionne || undefined);
       charger();
     } catch (err) {
       setErreur(err.response?.data?.message || "Erreur");
@@ -89,6 +102,18 @@ const TransporteurDashboard = () => {
         )}
       </div>
       {erreur && <p style={{ color: "red" }}>{erreur}</p>}
+
+      {mesVehicules.length > 0 && (
+        <div className="card" style={{ marginBottom: 16 }}>
+          <label style={{ fontSize: 13, fontWeight: 600 }}>Véhicule utilisé pour accepter une mission (facultatif)</label>
+          <select value={vehiculeSelectionne} onChange={(e) => setVehiculeSelectionne(e.target.value)} style={{ width: "100%", marginTop: 4 }}>
+            <option value="">Aucun véhicule choisi (indépendant)</option>
+            {mesVehicules.map((v) => (
+              <option key={v._id} value={v._id}>{v.immatriculation} — {v.type} ({v.capaciteKg} kg){v.nomChauffeur ? ` — ${v.nomChauffeur}` : ""}</option>
+            ))}
+          </select>
+        </div>
+      )}
 
       {chargement ? (
         <p>Chargement...</p>

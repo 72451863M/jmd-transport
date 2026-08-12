@@ -15,6 +15,8 @@ const ClientDashboard = () => {
   const [form, setForm] = useState({
     departLabel: "",
     departPays: "Mali",
+    departLat: null,
+    departLng: null,
     arriveeLabel: "",
     arriveePays: "Mali",
     description: "",
@@ -22,9 +24,47 @@ const ClientDashboard = () => {
     distanceKm: "",
     optionExpress: false,
     modePaiement: "especes",
+    typeMarchandise: "colis",
+    nombrePalettes: "",
+    declarationMarchandiseDangereuse: false,
   });
+  const [geolocalisationEnCours, setGeolocalisationEnCours] = useState(false);
+  const [geolocalisationMessage, setGeolocalisationMessage] = useState("");
 
   const PAYS_UEMOA = ["Mali", "Sénégal", "Côte d'Ivoire", "Burkina Faso", "Togo", "Bénin", "Niger", "Guinée-Bissau"];
+
+  const LABELS_TYPE_MARCHANDISE = {
+    colis: "Colis",
+    palettes: "Palettes",
+    materiaux_construction: "Matériaux de construction",
+    produits_agricoles: "Produits agricoles",
+    produits_petroliers: "Produits pétroliers",
+    produits_dangereux: "Produits dangereux",
+    produits_refrigeres: "Produits réfrigérés",
+    conteneurs: "Conteneurs",
+  };
+  const TYPES_SENSIBLES = ["produits_petroliers", "produits_dangereux"];
+
+  const utiliserMaPosition = () => {
+    if (!navigator.geolocation) {
+      setGeolocalisationMessage("La géolocalisation n'est pas supportée par ce navigateur.");
+      return;
+    }
+    setGeolocalisationEnCours(true);
+    setGeolocalisationMessage("");
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        setForm((f) => ({ ...f, departLat: pos.coords.latitude, departLng: pos.coords.longitude }));
+        setGeolocalisationMessage("Position GPS enregistrée pour le départ — utile pour le suivi et les alertes d'itinéraire.");
+        setGeolocalisationEnCours(false);
+      },
+      () => {
+        setGeolocalisationMessage("Impossible d'obtenir ta position (autorisation refusée ou indisponible).");
+        setGeolocalisationEnCours(false);
+      },
+      { enableHighAccuracy: true, timeout: 10000 }
+    );
+  };
 
   const chargerLivraisons = async () => {
     try {
@@ -75,17 +115,22 @@ const ClientDashboard = () => {
     e.preventDefault();
     try {
       await creerLivraison({
-        adresseDepart: { label: form.departLabel, pays: form.departPays },
+        adresseDepart: { label: form.departLabel, pays: form.departPays, lat: form.departLat, lng: form.departLng },
         adresseArrivee: { label: form.arriveeLabel, pays: form.arriveePays },
         description: form.description,
         poidsKg: Number(form.poidsKg) || 0,
         distanceKm: Number(form.distanceKm) || 0,
         optionExpress: form.optionExpress,
         modePaiement: form.modePaiement,
+        typeMarchandise: form.typeMarchandise,
+        nombrePalettes: form.typeMarchandise === "palettes" ? Number(form.nombrePalettes) || null : null,
+        declarationMarchandiseDangereuse: form.declarationMarchandiseDangereuse,
       });
       setForm({
         departLabel: "",
         departPays: "Mali",
+        departLat: null,
+        departLng: null,
         arriveeLabel: "",
         arriveePays: "Mali",
         description: "",
@@ -93,7 +138,11 @@ const ClientDashboard = () => {
         distanceKm: "",
         optionExpress: false,
         modePaiement: "especes",
+        typeMarchandise: "colis",
+        nombrePalettes: "",
+        declarationMarchandiseDangereuse: false,
       });
+      setGeolocalisationMessage("");
       setEstimation(null);
       setAfficherForm(false);
       chargerLivraisons();
@@ -132,12 +181,53 @@ const ClientDashboard = () => {
             <select name="departPays" value={form.departPays} onChange={handleChange}>
               {PAYS_UEMOA.map((p) => <option key={p} value={p}>{p}</option>)}
             </select>
+            <div style={{ margin: "6px 0 10px" }}>
+              <button type="button" className="btn btn-secondary" onClick={utiliserMaPosition} disabled={geolocalisationEnCours} style={{ fontSize: 12, padding: "6px 10px" }}>
+                {geolocalisationEnCours ? "Localisation..." : form.departLat ? "📍 Position GPS enregistrée" : "📍 Utiliser ma position actuelle"}
+              </button>
+              {geolocalisationMessage && <p style={{ fontSize: 12, color: "#777", margin: "4px 0 0" }}>{geolocalisationMessage}</p>}
+              <p style={{ fontSize: 11, color: "#999", margin: "4px 0 0" }}>
+                Facultatif — active le suivi GPS et les alertes d'itinéraire (Module 10) sur cette livraison.
+              </p>
+            </div>
 
             <label>Adresse d'arrivée</label>
             <input name="arriveeLabel" value={form.arriveeLabel} onChange={handleChange} required />
             <select name="arriveePays" value={form.arriveePays} onChange={handleChange}>
               {PAYS_UEMOA.map((p) => <option key={p} value={p}>{p}</option>)}
             </select>
+
+            <label>Type de marchandise</label>
+            <select name="typeMarchandise" value={form.typeMarchandise} onChange={handleChange}>
+              {Object.entries(LABELS_TYPE_MARCHANDISE).map(([val, label]) => <option key={val} value={val}>{label}</option>)}
+            </select>
+
+            {form.typeMarchandise === "palettes" && (
+              <>
+                <label>Nombre de palettes</label>
+                <input type="number" min="1" name="nombrePalettes" value={form.nombrePalettes} onChange={handleChange} />
+              </>
+            )}
+
+            {TYPES_SENSIBLES.includes(form.typeMarchandise) && (
+              <div style={{ background: "#fff3e0", border: "1px solid #cc5500", borderRadius: 6, padding: 10, margin: "8px 0" }}>
+                <label style={{ display: "flex", alignItems: "flex-start", gap: 8, fontSize: 13 }}>
+                  <input
+                    type="checkbox"
+                    name="declarationMarchandiseDangereuse"
+                    checked={form.declarationMarchandiseDangereuse}
+                    onChange={handleChange}
+                    style={{ marginTop: 3 }}
+                    required
+                  />
+                  <span>
+                    Je déclare que cette marchandise ({LABELS_TYPE_MARCHANDISE[form.typeMarchandise]}) est correctement
+                    documentée et conforme à la réglementation en vigueur. Un véhicule adapté (citerne) sera requis
+                    pour l'acceptation de cette mission.
+                  </span>
+                </label>
+              </div>
+            )}
 
             {form.departPays !== form.arriveePays && (
               <p style={{ fontSize: 12, color: "#cc5500", background: "#fff7ed", padding: 8, borderRadius: 6, margin: "8px 0" }}>

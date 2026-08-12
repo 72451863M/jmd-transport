@@ -2,9 +2,10 @@ import React, { useEffect, useRef, useState } from "react";
 import { useParams } from "react-router-dom";
 import { io } from "socket.io-client";
 import { useAuth } from "../context/AuthContext";
-import { getLivraisonById } from "../api/livraisonApi";
+import { getLivraisonById, getSuiviGPS } from "../api/livraisonApi";
 import DocumentsLivraison from "../components/DocumentsLivraison";
 import MessagerieLivraison from "../components/MessagerieLivraison";
+import CarteSuiviGPS from "../components/CarteSuiviGPS";
 
 const SOCKET_URL = import.meta.env.VITE_SOCKET_URL || "http://localhost:5000";
 
@@ -14,11 +15,24 @@ const Tracking = () => {
   const [livraison, setLivraison] = useState(null);
   const [position, setPosition] = useState(null);
   const [envoiActif, setEnvoiActif] = useState(false);
+  const [suiviGPS, setSuiviGPS] = useState(null);
+  const [alerteDeviationDirecte, setAlerteDeviationDirecte] = useState(null);
   const socketRef = useRef(null);
   const watchIdRef = useRef(null);
 
+  const chargerSuiviGPS = async () => {
+    try {
+      const { data } = await getSuiviGPS(id);
+      setSuiviGPS(data);
+      if (data.positionActuelle) setPosition(data.positionActuelle);
+    } catch (err) {
+      // silencieux : le suivi GPS n'est pas bloquant pour le reste de la page
+    }
+  };
+
   useEffect(() => {
     getLivraisonById(id).then(({ data }) => setLivraison(data));
+    chargerSuiviGPS();
 
     const socket = io(SOCKET_URL);
     socketRef.current = socket;
@@ -27,12 +41,20 @@ const Tracking = () => {
 
     socket.on("position_mise_a_jour", (data) => {
       setPosition(data);
+      // Recharge le suivi complet (itinéraire, arrêts) à intervalle raisonnable
+      // plutôt qu'à chaque point GPS, pour ne pas surcharger l'API.
+      chargerSuiviGPS();
+    });
+
+    socket.on("alerte_deviation", (alerte) => {
+      setAlerteDeviationDirecte(alerte);
     });
 
     return () => {
       socket.disconnect();
       if (watchIdRef.current) navigator.geolocation.clearWatch(watchIdRef.current);
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
   // Pour le transporteur : commence à envoyer sa position GPS réelle du navigateur
@@ -63,6 +85,8 @@ const Tracking = () => {
     setEnvoiActif(false);
   };
 
+  const alerteDeviation = alerteDeviationDirecte || suiviGPS?.alerteDeviation;
+
   return (
     <div className="container" style={{ paddingTop: 30, paddingBottom: 60 }}>
       <h2 style={{ marginBottom: 20 }}>Suivi en temps réel</h2>
@@ -75,6 +99,39 @@ const Tracking = () => {
           <MessagerieLivraison livraisonId={id} transporteurAssigne={!!livraison.transporteur} />
         </div>
       )}
+
+      {suiviGPS?.retard?.detecte && (
+        <div className="card" style={{ background: "#fff3e0", border: "1px solid #cc5500" }}>
+          <p style={{ color: "#cc5500", fontWeight: 700, margin: 0 }}>
+            ⚠ Retard détecté par rapport à l'heure de livraison prévue
+            {suiviGPS.retard.dateLivraisonPrevue && ` (${new Date(suiviGPS.retard.dateLivraisonPrevue).toLocaleString()})`}
+          </p>
+        </div>
+      )}
+
+      {alerteDeviation?.enDeviation && (
+        <div className="card" style={{ background: "#ffebee", border: "1px solid #cc3333" }}>
+          <p style={{ color: "#cc3333", fontWeight: 700, margin: 0 }}>
+            🚨 Alerte : le transporteur s'écarte de l'itinéraire attendu (à environ {alerteDeviation.distanceKm} km,
+            seuil de tolérance {alerteDeviation.seuilKm} km).
+          </p>
+          <p style={{ fontSize: 12, color: "#777", margin: "6px 0 0" }}>
+            Estimation à vol d'oiseau par rapport à la ligne départ→arrivée — pas le vrai tracé routier
+            (aucun service de routage payant n'est branché sur cette version).
+          </p>
+        </div>
+      )}
+
+      <div className="card">
+        <h3 style={{ marginBottom: 10 }}>Carte</h3>
+        <CarteSuiviGPS
+          positionActuelle={position}
+          itineraire={suiviGPS?.itineraireParcouru}
+          adresseDepart={livraison?.adresseDepart}
+          adresseArrivee={livraison?.adresseArrivee}
+          arrets={suiviGPS?.arrets}
+        />
+      </div>
 
       <div className="card">
         <h3 style={{ marginBottom: 10 }}>Position actuelle</h3>
@@ -98,6 +155,17 @@ const Tracking = () => {
           <p>En attente de la position du transporteur...</p>
         )}
       </div>
+
+      {suiviGPS?.arrets?.length > 0 && (
+        <div className="card">
+          <h3 style={{ marginBottom: 10 }}>Arrêts détectés ({suiviGPS.arrets.length})</h3>
+          {suiviGPS.arrets.map((a, i) => (
+            <p key={i} style={{ fontSize: 14, margin: "4px 0" }}>
+              Arrêt de <strong>{a.dureeMinutes} min</strong> — de {new Date(a.debut).toLocaleTimeString()} à {new Date(a.fin).toLocaleTimeString()}
+            </p>
+          ))}
+        </div>
+      )}
 
       {user?.role === "transporteur" && (
         <div className="card">

@@ -46,7 +46,14 @@ const Navbar = () => {
             <Link to="/admin" style={{ color: "white" }}>Administration</Link>
             <Link to="/admin/parametres" style={{ color: "white" }}>Paramètres</Link>
             <Link to="/admin/audit" style={{ color: "white" }}>Journal d'audit</Link>
+            <Link to="/admin/tickets" style={{ color: "white" }}>Tickets</Link>
+            <Link to="/admin/faq" style={{ color: "white" }}>FAQ</Link>
+            <Link to="/admin/comptabilite" style={{ color: "white" }}>Comptabilité</Link>
           </>
+        )}
+
+        {user && (
+          <Link to="/assistance" style={{ color: "white" }}>Assistance</Link>
         )}
 
         {user && (user.role === "client" || user.role === "transporteur") && (

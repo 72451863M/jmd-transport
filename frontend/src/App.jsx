@@ -18,6 +18,11 @@ import MesChauffeurs from "./pages/MesChauffeurs";
 import MesPerformances from "./pages/MesPerformances";
 import ParametresSysteme from "./pages/ParametresSysteme";
 import JournalAudit from "./pages/JournalAudit";
+import CentreAssistance from "./pages/CentreAssistance";
+import TicketDetail from "./pages/TicketDetail";
+import AdminTickets from "./pages/AdminTickets";
+import AdminFAQ from "./pages/AdminFAQ";
+import Comptabilite from "./pages/Comptabilite";
 
 function App() {
   return (
@@ -87,6 +92,51 @@ function App() {
           element={
             <PrivateRoute>
               <JournalAudit />
+            </PrivateRoute>
+          }
+        />
+
+        <Route
+          path="/assistance"
+          element={
+            <PrivateRoute>
+              <CentreAssistance />
+            </PrivateRoute>
+          }
+        />
+
+        <Route
+          path="/assistance/tickets/:id"
+          element={
+            <PrivateRoute>
+              <TicketDetail />
+            </PrivateRoute>
+          }
+        />
+
+        <Route
+          path="/admin/tickets"
+          element={
+            <PrivateRoute>
+              <AdminTickets />
+            </PrivateRoute>
+          }
+        />
+
+        <Route
+          path="/admin/faq"
+          element={
+            <PrivateRoute>
+              <AdminFAQ />
+            </PrivateRoute>
+          }
+        />
+
+        <Route
+          path="/admin/comptabilite"
+          element={
+            <PrivateRoute>
+              <Comptabilite />
             </PrivateRoute>
           }
         />

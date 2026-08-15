@@ -10,8 +10,11 @@ export const getLivraisonById = (id) => axiosInstance.get(`/livraisons/${id}`);
 
 export const getSuiviGPS = (id) => axiosInstance.get(`/livraisons/${id}/suivi-gps`);
 
-export const accepterLivraison = (id, vehiculeId) =>
-  axiosInstance.put(`/livraisons/${id}/accepter`, vehiculeId ? { vehiculeId } : {});
+export const accepterLivraison = (id, vehiculeId, chauffeurId) =>
+  axiosInstance.put(`/livraisons/${id}/accepter`, {
+    ...(vehiculeId ? { vehiculeId } : {}),
+    ...(chauffeurId ? { chauffeurId } : {}),
+  });
 
 export const updateStatutLivraison = (id, statut, motif) =>
   axiosInstance.put(`/livraisons/${id}/statut`, { statut, motif });

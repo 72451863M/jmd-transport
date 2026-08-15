@@ -56,7 +56,7 @@ const Navbar = () => {
           <Link to="/assistance" style={{ color: "white" }}>Assistance</Link>
         )}
 
-        {user && (user.role === "client" || user.role === "transporteur") && (
+        {user && user.entreprise?.entrepriseId && (
           <Link to="/entreprise" style={{ color: "white" }}>Mon entreprise</Link>
         )}
         {user && user.role === "transporteur" && (

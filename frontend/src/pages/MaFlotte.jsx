@@ -1,5 +1,7 @@
 import React, { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 import { ajouterVehicule, getMesVehicules, modifierVehicule, supprimerVehicule } from "../api/vehiculeApi";
+import { getEcheancesProches } from "../api/maintenanceApi";
 
 const LABELS_TYPE = {
   moto: "Moto",
@@ -10,16 +12,20 @@ const LABELS_TYPE = {
   frigorifique: "Frigorifique",
 };
 
+const LABELS_ECHEANCE = { controle_technique: "Contrôle technique", assurance: "Assurance" };
+
 const MaFlotte = () => {
   const [vehicules, setVehicules] = useState([]);
+  const [echeances, setEcheances] = useState([]);
   const [chargement, setChargement] = useState(true);
   const [erreur, setErreur] = useState("");
   const [form, setForm] = useState({ immatriculation: "", type: "camionnette", capaciteKg: "", nomChauffeur: "", telephoneChauffeur: "" });
 
   const charger = async () => {
     try {
-      const { data } = await getMesVehicules();
-      setVehicules(data);
+      const [resVehicules, resEcheances] = await Promise.all([getMesVehicules(), getEcheancesProches()]);
+      setVehicules(resVehicules.data);
+      setEcheances(resEcheances.data.echeances);
     } catch (err) {
       setErreur("Impossible de charger la flotte");
     } finally {
@@ -69,6 +75,18 @@ const MaFlotte = () => {
       <h2 style={{ marginBottom: 20 }}>Ma flotte</h2>
       {erreur && <p style={{ color: "red" }}>{erreur}</p>}
 
+      {echeances.length > 0 && (
+        <div className="card" style={{ background: "#fff3e0", border: "1px solid #cc5500" }}>
+          <h3 style={{ marginBottom: 8, fontSize: 15, color: "#cc5500" }}>⚠ Échéances à surveiller</h3>
+          {echeances.map((e, i) => (
+            <p key={i} style={{ fontSize: 13, margin: "4px 0", color: e.depassee ? "#cc3333" : "#555" }}>
+              <strong>{e.immatriculation}</strong> — {LABELS_ECHEANCE[e.type]} {e.depassee ? "dépassé le" : "prévu le"} {new Date(e.date).toLocaleDateString()}
+              {e.depassee && " — À régulariser rapidement"}
+            </p>
+          ))}
+        </div>
+      )}
+
       <div className="card">
         <h3 style={{ marginBottom: 12, fontSize: 16 }}>Ajouter un véhicule</h3>
         <form onSubmit={handleAjouter}>
@@ -100,10 +118,14 @@ const MaFlotte = () => {
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: 8 }}>
             <div>
               <strong>{v.immatriculation}</strong> — {LABELS_TYPE[v.type]} — {v.capaciteKg} kg
+              {v.kilometrageActuel != null && <p style={{ fontSize: 12, color: "#777", margin: "4px 0 0" }}>{v.kilometrageActuel.toLocaleString()} km</p>}
               {v.nomChauffeur && <p style={{ fontSize: 13, color: "#555", margin: "4px 0 0" }}>Chauffeur : {v.nomChauffeur} {v.telephoneChauffeur && `(${v.telephoneChauffeur})`}</p>}
               {!v.actif && <p style={{ fontSize: 12, color: "#cc5500", margin: "4px 0 0" }}>Désactivé</p>}
             </div>
-            <div style={{ display: "flex", gap: 8 }}>
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap", justifyContent: "flex-end" }}>
+              <Link to={`/flotte/${v._id}/maintenance`} className="btn btn-secondary" style={{ fontSize: 12, padding: "6px 10px", textDecoration: "none" }}>
+                Maintenance
+              </Link>
               <button className="btn btn-secondary" onClick={() => handleToggleActif(v)} style={{ fontSize: 12, padding: "6px 10px" }}>
                 {v.actif ? "Désactiver" : "Activer"}
               </button>

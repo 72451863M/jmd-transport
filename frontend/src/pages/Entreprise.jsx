@@ -3,7 +3,7 @@ import { creerEntreprise, getMonEntreprise, ajouterCollaborateur } from "../api/
 import { useAuth } from "../context/AuthContext";
 
 const Entreprise = () => {
-  const { user } = useAuth();
+  const { user, mettreAJourUser } = useAuth();
   const [entreprise, setEntreprise] = useState(null);
   const [collaborateurs, setCollaborateurs] = useState([]);
   const [chargement, setChargement] = useState(true);
@@ -32,7 +32,8 @@ const Entreprise = () => {
   const handleCreer = async (e) => {
     e.preventDefault();
     try {
-      await creerEntreprise(form);
+      const { data } = await creerEntreprise(form);
+      mettreAJourUser({ entreprise: { entrepriseId: data._id, roleEntreprise: "proprietaire" } });
       setErreur("");
       charger();
     } catch (err) {

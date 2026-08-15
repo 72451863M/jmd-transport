@@ -27,6 +27,7 @@ const ClientDashboard = () => {
     typeMarchandise: "colis",
     nombrePalettes: "",
     declarationMarchandiseDangereuse: false,
+    eligibleCollaboratif: false,
   });
   const [geolocalisationEnCours, setGeolocalisationEnCours] = useState(false);
   const [geolocalisationMessage, setGeolocalisationMessage] = useState("");
@@ -125,6 +126,7 @@ const ClientDashboard = () => {
         typeMarchandise: form.typeMarchandise,
         nombrePalettes: form.typeMarchandise === "palettes" ? Number(form.nombrePalettes) || null : null,
         declarationMarchandiseDangereuse: form.declarationMarchandiseDangereuse,
+        eligibleCollaboratif: form.eligibleCollaboratif,
       });
       setForm({
         departLabel: "",
@@ -141,6 +143,7 @@ const ClientDashboard = () => {
         typeMarchandise: "colis",
         nombrePalettes: "",
         declarationMarchandiseDangereuse: false,
+        eligibleCollaboratif: false,
       });
       setGeolocalisationMessage("");
       setEstimation(null);
@@ -243,6 +246,23 @@ const ClientDashboard = () => {
 
             <label>Poids (kg)</label>
             <input type="number" name="poidsKg" value={form.poidsKg} onChange={handleChange} />
+
+            <div style={{ background: "#f4f6f8", borderRadius: 6, padding: 10, margin: "8px 0" }}>
+              <label style={{ display: "flex", alignItems: "flex-start", gap: 8, fontSize: 13 }}>
+                <input
+                  type="checkbox"
+                  name="eligibleCollaboratif"
+                  checked={form.eligibleCollaboratif}
+                  onChange={handleChange}
+                  style={{ marginTop: 3 }}
+                />
+                <span>
+                  J'accepte de partager mon transport avec d'autres clients allant sur le même trajet, pour réduire
+                  le coût. Je verrai la ville de livraison et l'heure estimée des autres colis du même groupe, jamais
+                  leur nom, téléphone ou contenu.
+                </span>
+              </label>
+            </div>
 
             <label style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 8 }}>
               <input type="checkbox" name="optionExpress" checked={form.optionExpress} onChange={handleChange} style={{ width: "auto" }} />

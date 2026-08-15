@@ -42,8 +42,19 @@ export const AuthProvider = ({ children }) => {
     setUser(null);
   };
 
+  // Permet de mettre à jour certains champs de l'utilisateur connecté sans
+  // devoir se déconnecter/reconnecter (ex. après avoir créé/rejoint une
+  // entreprise, pour que "Mon entreprise" apparaisse immédiatement).
+  const mettreAJourUser = (champsPartiels) => {
+    setUser((utilisateurActuel) => {
+      const utilisateurMisAJour = { ...utilisateurActuel, ...champsPartiels };
+      localStorage.setItem("user", JSON.stringify(utilisateurMisAJour));
+      return utilisateurMisAJour;
+    });
+  };
+
   return (
-    <AuthContext.Provider value={{ user, loading, register, login, logout }}>
+    <AuthContext.Provider value={{ user, loading, register, login, logout, mettreAJourUser }}>
       {children}
     </AuthContext.Provider>
   );

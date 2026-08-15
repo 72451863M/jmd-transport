@@ -1,11 +1,17 @@
 import React, { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 import { ajouterChauffeur, getMesChauffeurs, modifierChauffeur, supprimerChauffeur } from "../api/chauffeurApi";
+
+const LABELS_DISPONIBILITE = { disponible: "Disponible", en_mission: "En mission", indisponible: "Indisponible" };
+const COULEURS_DISPONIBILITE = { disponible: "#33a852", en_mission: "#cc5500", indisponible: "#cc3333" };
+
+const FORM_VIDE = { nom: "", telephone: "", numeroPermis: "", categoriePermis: "", dateExpirationPermis: "", certificatNom: "" };
 
 const MesChauffeurs = () => {
   const [chauffeurs, setChauffeurs] = useState([]);
   const [chargement, setChargement] = useState(true);
   const [erreur, setErreur] = useState("");
-  const [form, setForm] = useState({ nom: "", telephone: "", numeroPermis: "" });
+  const [form, setForm] = useState(FORM_VIDE);
 
   const charger = async () => {
     try {
@@ -25,8 +31,15 @@ const MesChauffeurs = () => {
   const handleAjouter = async (e) => {
     e.preventDefault();
     try {
-      await ajouterChauffeur(form);
-      setForm({ nom: "", telephone: "", numeroPermis: "" });
+      await ajouterChauffeur({
+        nom: form.nom,
+        telephone: form.telephone,
+        numeroPermis: form.numeroPermis || undefined,
+        categoriePermis: form.categoriePermis || undefined,
+        dateExpirationPermis: form.dateExpirationPermis || undefined,
+        certificats: form.certificatNom ? [{ nom: form.certificatNom }] : [],
+      });
+      setForm(FORM_VIDE);
       setErreur("");
       charger();
     } catch (err) {
@@ -37,6 +50,15 @@ const MesChauffeurs = () => {
   const handleToggleActif = async (chauffeur) => {
     try {
       await modifierChauffeur(chauffeur._id, { actif: !chauffeur.actif });
+      charger();
+    } catch (err) {
+      window.alert(err.response?.data?.message || "Erreur");
+    }
+  };
+
+  const handleChangerDisponibilite = async (chauffeur, disponibilite) => {
+    try {
+      await modifierChauffeur(chauffeur._id, { disponibilite });
       charger();
     } catch (err) {
       window.alert(err.response?.data?.message || "Erreur");
@@ -72,6 +94,18 @@ const MesChauffeurs = () => {
           <label>Numéro de permis (facultatif)</label>
           <input value={form.numeroPermis} onChange={(e) => setForm({ ...form, numeroPermis: e.target.value })} />
 
+          <label>Catégorie de permis (facultatif)</label>
+          <select value={form.categoriePermis} onChange={(e) => setForm({ ...form, categoriePermis: e.target.value })}>
+            <option value="">-- Non précisée --</option>
+            {["A", "B", "C", "D", "E"].map((cat) => <option key={cat} value={cat}>{cat}</option>)}
+          </select>
+
+          <label>Date d'expiration du permis (facultatif)</label>
+          <input type="date" value={form.dateExpirationPermis} onChange={(e) => setForm({ ...form, dateExpirationPermis: e.target.value })} />
+
+          <label>Certificat (facultatif, ex. transport matières dangereuses)</label>
+          <input value={form.certificatNom} onChange={(e) => setForm({ ...form, certificatNom: e.target.value })} />
+
           <button type="submit" className="btn" style={{ marginTop: 10 }}>Ajouter à mon équipe</button>
         </form>
       </div>
@@ -83,10 +117,41 @@ const MesChauffeurs = () => {
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: 8 }}>
             <div>
               <strong>{c.nom}</strong> — {c.telephone}
-              {c.numeroPermis && <p style={{ fontSize: 13, color: "#555", margin: "4px 0 0" }}>Permis n° {c.numeroPermis}</p>}
+              <span style={{ marginLeft: 8, fontSize: 11, fontWeight: 700, color: "#fff", background: COULEURS_DISPONIBILITE[c.disponibilite], borderRadius: 4, padding: "2px 6px" }}>
+                {LABELS_DISPONIBILITE[c.disponibilite]}
+              </span>
+              {(c.numeroPermis || c.categoriePermis) && (
+                <p style={{ fontSize: 13, color: "#555", margin: "4px 0 0" }}>
+                  Permis {c.categoriePermis && `catégorie ${c.categoriePermis}`} {c.numeroPermis && `n° ${c.numeroPermis}`}
+                  {c.dateExpirationPermis && ` — expire le ${new Date(c.dateExpirationPermis).toLocaleDateString()}`}
+                </p>
+              )}
+              {c.certificats?.length > 0 && (
+                <p style={{ fontSize: 12, color: "#777", margin: "4px 0 0" }}>
+                  Certificats : {c.certificats.map((cert) => cert.nom).join(", ")}
+                </p>
+              )}
+              {c.statsMissions && (
+                <p style={{ fontSize: 12, color: "#777", margin: "4px 0 0" }}>
+                  {c.statsMissions.missionsCompletees} mission(s) complétée(s)
+                  {c.statsMissions.nbNotes > 0 && ` — note moyenne ${Math.round((c.statsMissions.sommeNotes / c.statsMissions.nbNotes) * 10) / 10}/5`}
+                </p>
+              )}
               {!c.actif && <p style={{ fontSize: 12, color: "#cc5500", margin: "4px 0 0" }}>Désactivé</p>}
             </div>
-            <div style={{ display: "flex", gap: 8 }}>
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap", justifyContent: "flex-end" }}>
+              <Link to={`/chauffeurs/${c._id}/historique`} className="btn btn-secondary" style={{ fontSize: 12, padding: "6px 10px", textDecoration: "none" }}>
+                Historique
+              </Link>
+              {c.disponibilite !== "en_mission" && (
+                <button
+                  className="btn btn-secondary"
+                  onClick={() => handleChangerDisponibilite(c, c.disponibilite === "indisponible" ? "disponible" : "indisponible")}
+                  style={{ fontSize: 12, padding: "6px 10px" }}
+                >
+                  {c.disponibilite === "indisponible" ? "Marquer disponible" : "Marquer indisponible"}
+                </button>
+              )}
               <button className="btn btn-secondary" onClick={() => handleToggleActif(c)} style={{ fontSize: 12, padding: "6px 10px" }}>
                 {c.actif ? "Désactiver" : "Activer"}
               </button>

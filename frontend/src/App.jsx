@@ -15,6 +15,8 @@ import KYC from "./pages/KYC";
 import Entreprise from "./pages/Entreprise";
 import MaFlotte from "./pages/MaFlotte";
 import MesChauffeurs from "./pages/MesChauffeurs";
+import HistoriqueChauffeur from "./pages/HistoriqueChauffeur";
+import MaintenanceVehicule from "./pages/MaintenanceVehicule";
 import MesPerformances from "./pages/MesPerformances";
 import ParametresSysteme from "./pages/ParametresSysteme";
 import JournalAudit from "./pages/JournalAudit";
@@ -61,10 +63,28 @@ function App() {
         />
 
         <Route
+          path="/flotte/:id/maintenance"
+          element={
+            <PrivateRoute>
+              <MaintenanceVehicule />
+            </PrivateRoute>
+          }
+        />
+
+        <Route
           path="/chauffeurs"
           element={
             <PrivateRoute>
               <MesChauffeurs />
+            </PrivateRoute>
+          }
+        />
+
+        <Route
+          path="/chauffeurs/:id/historique"
+          element={
+            <PrivateRoute>
+              <HistoriqueChauffeur />
             </PrivateRoute>
           }
         />

@@ -6,6 +6,7 @@ import { getLivraisonById, getSuiviGPS } from "../api/livraisonApi";
 import DocumentsLivraison from "../components/DocumentsLivraison";
 import MessagerieLivraison from "../components/MessagerieLivraison";
 import CarteSuiviGPS from "../components/CarteSuiviGPS";
+import { getMonGroupeCollaboratif } from "../api/collaboratifApi";
 
 const SOCKET_URL = import.meta.env.VITE_SOCKET_URL || "http://localhost:5000";
 
@@ -17,6 +18,7 @@ const Tracking = () => {
   const [envoiActif, setEnvoiActif] = useState(false);
   const [suiviGPS, setSuiviGPS] = useState(null);
   const [alerteDeviationDirecte, setAlerteDeviationDirecte] = useState(null);
+  const [groupeCollaboratif, setGroupeCollaboratif] = useState(null);
   const socketRef = useRef(null);
   const watchIdRef = useRef(null);
 
@@ -32,6 +34,9 @@ const Tracking = () => {
 
   useEffect(() => {
     getLivraisonById(id).then(({ data }) => setLivraison(data));
+    getMonGroupeCollaboratif(id)
+      .then(({ data }) => setGroupeCollaboratif(data))
+      .catch(() => {}); // silencieux : la plupart des livraisons n'ont pas de groupe (404 attendu)
     chargerSuiviGPS();
 
     const socket = io(SOCKET_URL);
@@ -119,6 +124,32 @@ const Tracking = () => {
             Estimation à vol d'oiseau par rapport à la ligne départ→arrivée — pas le vrai tracé routier
             (aucun service de routage payant n'est branché sur cette version).
           </p>
+        </div>
+      )}
+
+      {groupeCollaboratif && (
+        <div className="card" style={{ background: "#f0f9f0", border: "1px solid #33a852" }}>
+          <h3 style={{ marginBottom: 6, fontSize: 16 }}>🤝 Transport collaboratif</h3>
+          <p style={{ fontSize: 13, margin: "0 0 8px" }}>
+            Ton colis partage ce trajet avec {groupeCollaboratif.nombreParticipants - 1} autre(s) client(s).
+            {groupeCollaboratif.maPart && (
+              <> Économie estimée : <strong>{groupeCollaboratif.maPart.economie.toLocaleString()} FCFA</strong>.</>
+            )}
+          </p>
+          {groupeCollaboratif.autresLivraisons.length > 0 && (
+            <>
+              <p style={{ fontSize: 12, color: "#555", marginBottom: 4 }}>Autres arrêts de ce groupe :</p>
+              {groupeCollaboratif.autresLivraisons.map((l, i) => (
+                <p key={i} style={{ fontSize: 12, color: "#777", margin: "2px 0" }}>
+                  📍 {l.villeLivraison} {l.heureEstimee && `— vers ${new Date(l.heureEstimee).toLocaleString()}`}
+                </p>
+              ))}
+              <p style={{ fontSize: 11, color: "#999", marginTop: 6 }}>
+                Par confidentialité, seuls la ville et l'horaire des autres colis sont visibles — jamais leur nom,
+                téléphone ou contenu.
+              </p>
+            </>
+          )}
         </div>
       )}
 

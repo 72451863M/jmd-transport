@@ -10,6 +10,7 @@ import { useAuth } from "../context/AuthContext";
 import EvaluationForm from "../components/EvaluationForm";
 import PreuveLivraisonForm from "../components/PreuveLivraisonForm";
 import { getMesVehicules } from "../api/vehiculeApi";
+import { getMesChauffeurs } from "../api/chauffeurApi";
 
 const TransporteurDashboard = () => {
   const { user } = useAuth();
@@ -19,6 +20,8 @@ const TransporteurDashboard = () => {
   const [monProfil, setMonProfil] = useState(null);
   const [mesVehicules, setMesVehicules] = useState([]);
   const [vehiculeSelectionne, setVehiculeSelectionne] = useState("");
+  const [mesChauffeurs, setMesChauffeurs] = useState([]);
+  const [chauffeurSelectionne, setChauffeurSelectionne] = useState("");
 
   const charger = async () => {
     try {
@@ -40,6 +43,15 @@ const TransporteurDashboard = () => {
     }
   };
 
+  const chargerMesChauffeurs = async () => {
+    try {
+      const { data } = await getMesChauffeurs();
+      setMesChauffeurs(data.filter((c) => c.actif && c.disponibilite === "disponible"));
+    } catch (err) {
+      // silencieux : facultatif, un transporteur peut ne pas avoir d'équipe
+    }
+  };
+
   const chargerMonScore = async () => {
     try {
       const { data } = await getTransporteurs();
@@ -54,12 +66,14 @@ const TransporteurDashboard = () => {
     charger();
     chargerMonScore();
     chargerMesVehicules();
+    chargerMesChauffeurs();
   }, []);
 
   const handleAccepter = async (id) => {
     try {
-      await accepterLivraison(id, vehiculeSelectionne || undefined);
+      await accepterLivraison(id, vehiculeSelectionne || undefined, chauffeurSelectionne || undefined);
       charger();
+      chargerMesChauffeurs();
     } catch (err) {
       setErreur(err.response?.data?.message || "Erreur");
     }
@@ -112,6 +126,21 @@ const TransporteurDashboard = () => {
               <option key={v._id} value={v._id}>{v.immatriculation} — {v.type} ({v.capaciteKg} kg){v.nomChauffeur ? ` — ${v.nomChauffeur}` : ""}</option>
             ))}
           </select>
+        </div>
+      )}
+
+      {mesChauffeurs.length > 0 && (
+        <div className="card" style={{ marginBottom: 16 }}>
+          <label style={{ fontSize: 13, fontWeight: 600 }}>Chauffeur affecté à cette mission (facultatif)</label>
+          <select value={chauffeurSelectionne} onChange={(e) => setChauffeurSelectionne(e.target.value)} style={{ width: "100%", marginTop: 4 }}>
+            <option value="">Aucun chauffeur choisi</option>
+            {mesChauffeurs.map((c) => (
+              <option key={c._id} value={c._id}>{c.nom} — {c.telephone}{c.categoriePermis ? ` (permis ${c.categoriePermis})` : ""}</option>
+            ))}
+          </select>
+          <p style={{ fontSize: 11, color: "#999", margin: "4px 0 0" }}>
+            Seuls les chauffeurs actuellement disponibles sont listés — ce chauffeur passera "en mission" une fois affecté.
+          </p>
         </div>
       )}
 

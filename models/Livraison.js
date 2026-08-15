@@ -43,6 +43,14 @@ const livraisonSchema = new mongoose.Schema(
       ref: "Vehicule",
       default: null,
     },
+    // Module 4 — le chauffeur choisi à l'acceptation (facultatif, comme le
+    // véhicule) permet de construire un vrai historique de missions par
+    // chauffeur et de lui attribuer une notation.
+    chauffeurUtilise: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Chauffeur",
+      default: null,
+    },
     statutDouane: {
       type: String,
       enum: ["non_applicable", "a_traiter_manuellement"],
@@ -65,6 +73,28 @@ const livraisonSchema = new mongoose.Schema(
     declarationMarchandiseDangereuse: {
       type: Boolean,
       default: false,
+    },
+    // Module 29 — Transport collaboratif : le client choisit explicitement
+    // de partager son transport (jamais activé par défaut sans son accord,
+    // puisque cela expose sa ville de livraison et son heure estimée à
+    // d'autres clients du même groupe — voir la liste blanche de
+    // confidentialité dans groupeCollaboratifController.js).
+    eligibleCollaboratif: {
+      type: Boolean,
+      default: false,
+    },
+    volumeM3: {
+      type: Number,
+      default: null,
+    },
+    groupeCollaboratif: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "GroupeCollaboratif",
+      default: null,
+    },
+    economieCollaborative: {
+      type: Number,
+      default: 0,
     },
     poidsKg: {
       type: Number,

@@ -53,6 +53,14 @@ const userSchema = new mongoose.Schema(
       type: Boolean,
       default: true,
     },
+    // Module notifications push mobile — jeton Expo du téléphone de
+    // l'utilisateur, pour lui envoyer une vraie notification même quand
+    // l'appli n'est pas ouverte. Reste null tant que l'appli mobile n'a pas
+    // demandé la permission et enregistré le jeton.
+    expoPushToken: {
+      type: String,
+      default: null,
+    },
     // KYC — Loi malienne n°2013-015 du 21/05/2013 et régulation APDP.
     // Règles validées le 04/08/2026 : consentement explicite obligatoire avant
     // toute collecte, documents requis selon le rôle, validation manuelle par

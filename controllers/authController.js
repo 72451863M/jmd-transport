@@ -43,6 +43,7 @@ const register = async (req, res) => {
       email: user.email,
       telephone: user.telephone,
       role: user.role,
+      entreprise: user.entreprise,
       token: generateToken(user._id),
     });
   } catch (error) {
@@ -86,6 +87,7 @@ const login = async (req, res) => {
       email: user.email,
       telephone: user.telephone,
       role: user.role,
+      entreprise: user.entreprise,
       token: generateToken(user._id),
     });
   } catch (error) {
@@ -101,4 +103,21 @@ const getMe = async (req, res) => {
   return res.status(200).json(req.user);
 };
 
-module.exports = { register, login, getMe };
+// @desc    Enregistrer/mettre à jour le jeton de notification push de
+//          l'appli mobile pour l'utilisateur connecté
+// @route   PUT /api/auth/push-token
+// @access  Privé
+const enregistrerPushToken = async (req, res) => {
+  try {
+    const { expoPushToken } = req.body;
+    if (!expoPushToken) {
+      return res.status(400).json({ message: "Le jeton push est obligatoire" });
+    }
+    await User.findByIdAndUpdate(req.user._id, { expoPushToken });
+    return res.status(200).json({ message: "Jeton push enregistré" });
+  } catch (error) {
+    return res.status(500).json({ message: "Erreur serveur", error: error.message });
+  }
+};
+
+module.exports = { register, login, getMe, enregistrerPushToken };

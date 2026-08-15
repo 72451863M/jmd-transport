@@ -62,6 +62,7 @@ const getMonStatutKYC = async (req, res) => {
     const { complet, manquants } = verifierDossierComplet(user);
     return res.status(200).json({
       statutGlobal: user.kyc.statutGlobal,
+      consentementDonne: user.kyc.consentement.donne,
       documentsRequis: DOCUMENTS_REQUIS_PAR_ROLE[user.role] || DOCUMENTS_REQUIS_PAR_ROLE.client,
       documentsDeposes: user.kyc.documents.map((d) => d.type),
       documentsManquants: manquants,

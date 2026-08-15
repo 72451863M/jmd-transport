@@ -23,6 +23,8 @@ const auditRoutes = require("./routes/auditRoutes");
 const faqRoutes = require("./routes/faqRoutes");
 const ticketRoutes = require("./routes/ticketRoutes");
 const comptabiliteRoutes = require("./routes/comptabiliteRoutes");
+const collaboratifRoutes = require("./routes/collaboratifRoutes");
+const maintenanceRoutes = require("./routes/maintenanceRoutes");
 
 // Connexion à la base de données
 connectDB();
@@ -64,6 +66,8 @@ app.use("/api/audit", auditRoutes);
 app.use("/api/faq", faqRoutes);
 app.use("/api/tickets", ticketRoutes);
 app.use("/api/comptabilite", comptabiliteRoutes);
+app.use("/api/collaboratif", collaboratifRoutes);
+app.use("/api/maintenance", maintenanceRoutes);
 
 // Route de test
 app.get("/api/health", (req, res) => {

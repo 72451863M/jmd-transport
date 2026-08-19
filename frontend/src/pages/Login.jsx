@@ -43,7 +43,7 @@ const Login = () => {
         </button>
       </form>
       <p style={{ marginTop: 16, fontSize: 14 }}>
-        Pas encore de compte ? <Link to="/register" style={{ color: "#ff6600" }}>Inscrivez-vous</Link>
+        Pas encore de compte ? <Link to="/register" style={{ color: "var(--cargo-orange)" }}>Inscrivez-vous</Link>
       </p>
     </div>
   );

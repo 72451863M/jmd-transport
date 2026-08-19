@@ -44,7 +44,7 @@ const CarteSuiviGPS = ({ positionActuelle, itineraire, adresseDepart, adresseArr
         </Marker>
       )}
 
-      {points.length > 1 && <Polyline positions={points} color="#ff6600" />}
+      {points.length > 1 && <Polyline positions={points} color="#f4661b" />}
 
       {positionActuelle && (
         <Marker position={[positionActuelle.lat, positionActuelle.lng]} icon={iconParDefaut}>

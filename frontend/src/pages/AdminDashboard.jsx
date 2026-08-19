@@ -213,7 +213,7 @@ const AdminDashboard = () => {
                           📄
                         </div>
                       )}
-                      <span style={{ color: "#1a3c6e" }}>{d.type}</span>
+                      <span style={{ color: "var(--route-navy)" }}>{d.type}</span>
                     </a>
                   ))}
                 </div>

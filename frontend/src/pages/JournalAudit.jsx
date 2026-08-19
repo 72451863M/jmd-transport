@@ -10,10 +10,10 @@ const LABELS_TYPE_ACTION = {
 };
 
 const COULEURS_TYPE_ACTION = {
-  connexion: "#1a3c6e",
-  modification: "#cc5500",
-  suppression: "#cc3333",
-  paiement: "#33a852",
+  connexion: "var(--route-navy)",
+  modification: "var(--cargo-orange-dark)",
+  suppression: "var(--alert-red)",
+  paiement: "var(--delivered-green)",
   validation: "#7b3fcc",
 };
 

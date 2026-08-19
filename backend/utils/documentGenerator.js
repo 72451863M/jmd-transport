@@ -41,4 +41,35 @@ function genererLettreDeVoiture(livraison, client, transporteur, vehiculeFlotte)
   };
 }
 
-module.exports = { genererLettreDeVoiture };
+// Module 14 — Comptabilité : génération automatique de la facture, au
+// moment où la livraison est marquée "livree" (la prestation est terminée,
+// c'est le moment naturel où une facture est émise). Reprend le prix et la
+// commission déjà calculés à la création (Module 24 : taux configurable) —
+// aucun nouveau calcul n'est inventé ici.
+function genererFacture(livraison, client, transporteur) {
+  return {
+    reference: `FACT-${livraison._id.toString().slice(-8).toUpperCase()}`,
+    dateEmission: new Date(),
+    client: {
+      nom: client?.nom || null,
+      telephone: client?.telephone || null,
+      email: client?.email || null,
+    },
+    transporteur: {
+      nom: transporteur?.nom || null,
+      telephone: transporteur?.telephone || null,
+    },
+    trajet: {
+      depart: livraison.adresseDepart?.label || null,
+      arrivee: livraison.adresseArrivee?.label || null,
+      distanceKm: livraison.distanceKm || 0,
+    },
+    montantTotal: livraison.prix,
+    commissionPlateforme: livraison.commission,
+    montantTransporteur: (livraison.prix || 0) - (livraison.commission || 0),
+    modePaiement: livraison.modePaiement,
+    statutPaiement: livraison.statutPaiement,
+  };
+}
+
+module.exports = { genererLettreDeVoiture, genererFacture };

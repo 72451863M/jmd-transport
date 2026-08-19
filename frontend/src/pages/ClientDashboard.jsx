@@ -324,7 +324,7 @@ const ClientDashboard = () => {
               </p>
             )}
             <div style={{ display: "flex", gap: 16, marginTop: 8, alignItems: "center" }}>
-              <Link to={`/tracking/${l._id}`} style={{ color: "#ff6600", fontSize: 14 }}>
+              <Link to={`/tracking/${l._id}`} style={{ color: "var(--cargo-orange)", fontSize: 14 }}>
                 Suivre en temps réel →
               </Link>
               {!["livree", "annulee"].includes(l.statut) && (

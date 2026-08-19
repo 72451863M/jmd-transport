@@ -38,7 +38,7 @@ const EvaluationForm = ({ livraisonId, evaluationExistante, onEvalue }) => {
       <p style={{ fontSize: 13, fontWeight: 600, marginBottom: 6 }}>Évaluer cette livraison</p>
       <div style={{ fontSize: 22, cursor: "pointer", marginBottom: 6 }}>
         {[1, 2, 3, 4, 5].map((n) => (
-          <span key={n} onClick={() => setNote(n)} style={{ color: n <= note ? "#ff6600" : "#ccc" }}>
+          <span key={n} onClick={() => setNote(n)} style={{ color: n <= note ? "var(--cargo-orange)" : "var(--line-200)" }}>
             ★
           </span>
         ))}

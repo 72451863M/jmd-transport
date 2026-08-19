@@ -91,7 +91,7 @@ const Register = () => {
         </button>
       </form>
       <p style={{ marginTop: 16, fontSize: 14 }}>
-        Déjà un compte ? <Link to="/login" style={{ color: "#ff6600" }}>Connectez-vous</Link>
+        Déjà un compte ? <Link to="/login" style={{ color: "var(--cargo-orange)" }}>Connectez-vous</Link>
       </p>
     </div>
   );

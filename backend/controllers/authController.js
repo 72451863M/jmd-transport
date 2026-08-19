@@ -43,6 +43,7 @@ const register = async (req, res) => {
       email: user.email,
       telephone: user.telephone,
       role: user.role,
+      entreprise: user.entreprise,
       token: generateToken(user._id),
     });
   } catch (error) {
@@ -86,6 +87,7 @@ const login = async (req, res) => {
       email: user.email,
       telephone: user.telephone,
       role: user.role,
+      entreprise: user.entreprise,
       token: generateToken(user._id),
     });
   } catch (error) {
@@ -101,4 +103,59 @@ const getMe = async (req, res) => {
   return res.status(200).json(req.user);
 };
 
-module.exports = { register, login, getMe };
+// @desc    Enregistrer/mettre à jour le jeton de notification push de
+//          l'appli mobile pour l'utilisateur connecté
+// @route   PUT /api/auth/push-token
+// @access  Privé
+const enregistrerPushToken = async (req, res) => {
+  try {
+    const { expoPushToken } = req.body;
+    if (!expoPushToken) {
+      return res.status(400).json({ message: "Le jeton push est obligatoire" });
+    }
+    await User.findByIdAndUpdate(req.user._id, { expoPushToken });
+    return res.status(200).json({ message: "Jeton push enregistré" });
+  } catch (error) {
+    return res.status(500).json({ message: "Erreur serveur", error: error.message });
+  }
+};
+
+// @desc    Mettre à jour son propre profil (nom, téléphone, et
+//          éventuellement mot de passe). Le mot de passe actuel est
+//          obligatoire dès qu'on touche à l'un ou l'autre, pour éviter
+//          qu'une session volée puisse changer discrètement les identifiants.
+// @route   PUT /api/auth/me
+// @access  Privé
+const modifierMonProfil = async (req, res) => {
+  try {
+    const { nom, telephone, motDePasseActuel, nouveauMotDePasse } = req.body;
+
+    if ((nom !== undefined || telephone !== undefined || nouveauMotDePasse) && !motDePasseActuel) {
+      return res.status(400).json({ message: "Ton mot de passe actuel est requis pour confirmer ces changements" });
+    }
+
+    const user = await User.findById(req.user._id);
+    if (motDePasseActuel) {
+      const motDePasseValide = await user.comparePassword(motDePasseActuel);
+      if (!motDePasseValide) {
+        return res.status(401).json({ message: "Mot de passe actuel incorrect" });
+      }
+    }
+
+    if (nom !== undefined) user.nom = nom.trim();
+    if (telephone !== undefined) user.telephone = telephone.trim();
+    if (nouveauMotDePasse) {
+      if (nouveauMotDePasse.length < 6) {
+        return res.status(400).json({ message: "Le nouveau mot de passe doit faire au moins 6 caractères" });
+      }
+      user.password = nouveauMotDePasse; // rehaché automatiquement par le hook pre("save")
+    }
+
+    await user.save();
+    return res.status(200).json({ _id: user._id, nom: user.nom, email: user.email, telephone: user.telephone, role: user.role });
+  } catch (error) {
+    return res.status(500).json({ message: "Erreur serveur", error: error.message });
+  }
+};
+
+module.exports = { register, login, getMe, enregistrerPushToken, modifierMonProfil };

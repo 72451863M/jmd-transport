@@ -7,7 +7,7 @@ const Home = () => {
 
   return (
     <div style={{ textAlign: "center", padding: "80px 20px" }}>
-      <h1 style={{ fontSize: 36, marginBottom: 16, color: "#1a3c6e" }}>
+      <h1 style={{ fontSize: 36, marginBottom: 16, color: "var(--route-navy)" }}>
         JMD-TRANSPORT
       </h1>
       <p style={{ fontSize: 18, color: "#555", maxWidth: 500, margin: "0 auto 30px" }}>

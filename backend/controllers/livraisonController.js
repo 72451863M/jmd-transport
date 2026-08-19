@@ -3,11 +3,13 @@ const User = require("../models/User");
 const Document = require("../models/Document");
 const Corridor = require("../models/Corridor");
 const Vehicule = require("../models/Vehicule");
+const Chauffeur = require("../models/Chauffeur");
 const { calculerPrixEstime, calculerCommission, estEnRetard } = require("../utils/tarification");
 const { notifier } = require("../utils/notifications");
-const { genererLettreDeVoiture } = require("../utils/documentGenerator");
+const { genererLettreDeVoiture, genererFacture } = require("../utils/documentGenerator");
 const { detecterArrets, detecterDeviationItineraire } = require("../utils/gpsTracking");
 const { TYPES_MARCHANDISE, LABELS_TYPES_MARCHANDISE, NECESSITE_DECLARATION, verifierCompatibiliteVehicule } = require("../utils/marchandises");
+const { tenterRegroupement } = require("./collaboratifController");
 const { recupererOuCreerParametres } = require("./parametreController");
 
 // Anti-désintermédiation : tant qu'une demande est en_attente (aucun
@@ -62,6 +64,8 @@ const creerLivraison = async (req, res) => {
       typeMarchandise,
       nombrePalettes,
       declarationMarchandiseDangereuse,
+      eligibleCollaboratif,
+      volumeM3,
     } = req.body;
 
     if (!adresseDepart?.label || !adresseArrivee?.label) {
@@ -124,7 +128,17 @@ const creerLivraison = async (req, res) => {
       typeMarchandise: type,
       nombrePalettes: type === "palettes" ? Number(nombrePalettes) || null : null,
       declarationMarchandiseDangereuse: NECESSITE_DECLARATION.includes(type) ? true : false,
+      eligibleCollaboratif: !!eligibleCollaboratif,
+      volumeM3: volumeM3 ? Number(volumeM3) : null,
     });
+
+    // Module 29 — Transport collaboratif : si le client a accepté de
+    // partager son transport, on tente de le regrouper avec une demande
+    // compatible déjà ouverte (ou on ouvre un nouveau groupe). Non bloquant
+    // pour la création de la demande elle-même en cas de souci.
+    if (livraison.eligibleCollaboratif) {
+      await tenterRegroupement(livraison);
+    }
 
     // Retour associés du 08/08/2026 : réduire le temps d'attente du client en
     // prévenant activement les transporteurs disponibles plutôt que de
@@ -148,7 +162,15 @@ const creerLivraison = async (req, res) => {
       )
     );
 
-    return res.status(201).json(livraison);
+    // Recharge la livraison avant de répondre : si elle a été regroupée
+    // (Module 29), l'économie et la référence au groupe ont été mises à
+    // jour sur une copie distincte à l'intérieur de tenterRegroupement — la
+    // réponse doit refléter ces changements, pas l'état d'avant regroupement.
+    const livraisonAJour = livraison.eligibleCollaboratif
+      ? (await Livraison.findById(livraison._id)) || livraison
+      : livraison;
+
+    return res.status(201).json(livraisonAJour);
   } catch (error) {
     return res.status(500).json({ message: "Erreur serveur", error: error.message });
   }
@@ -261,7 +283,7 @@ const accepterLivraison = async (req, res) => {
     // transporteur indépendant sans flotte enregistrée peut accepter sans),
     // mais s'il en choisit un, on vérifie qu'il lui appartient bien et qu'il
     // est actif.
-    const { vehiculeId } = req.body || {};
+    const { vehiculeId, chauffeurId } = req.body || {};
     let vehiculeChoisi = null;
     if (vehiculeId) {
       vehiculeChoisi = await Vehicule.findById(vehiculeId);
@@ -280,8 +302,29 @@ const accepterLivraison = async (req, res) => {
       return res.status(400).json({ message: compatibilite.message });
     }
 
+    // Module 4 — Gestion des chauffeurs : choix facultatif d'un chauffeur de
+    // son équipe, seulement s'il est bien disponible (pas déjà en mission).
+    let chauffeurChoisi = null;
+    if (chauffeurId) {
+      chauffeurChoisi = await Chauffeur.findById(chauffeurId);
+      if (!chauffeurChoisi || chauffeurChoisi.proprietaire.toString() !== req.user._id.toString()) {
+        return res.status(403).json({ message: "Ce chauffeur ne fait pas partie de ton équipe" });
+      }
+      if (!chauffeurChoisi.actif) {
+        return res.status(400).json({ message: "Ce chauffeur est désactivé" });
+      }
+      if (chauffeurChoisi.disponibilite !== "disponible") {
+        return res.status(400).json({ message: `Ce chauffeur n'est pas disponible actuellement (${chauffeurChoisi.disponibilite})` });
+      }
+      chauffeurChoisi.disponibilite = "en_mission";
+      await chauffeurChoisi.save();
+    }
+
     if (vehiculeChoisi) {
       livraison.vehiculeUtilise = vehiculeChoisi._id;
+    }
+    if (chauffeurChoisi) {
+      livraison.chauffeurUtilise = chauffeurChoisi._id;
     }
 
     livraison.transporteur = req.user._id;
@@ -474,7 +517,7 @@ const updateStatutLivraison = async (req, res) => {
 // @access  Privé (client ou transporteur de la livraison)
 const evaluerLivraison = async (req, res) => {
   try {
-    const { note, commentaire } = req.body;
+    const { note, commentaire, noteChauffeur } = req.body;
     const noteNum = Number(note);
 
     if (!noteNum || noteNum < 1 || noteNum > 5) {
@@ -509,6 +552,18 @@ const evaluerLivraison = async (req, res) => {
         await User.findByIdAndUpdate(livraison.transporteur, {
           $inc: { "statsFiabilite.sommeNotes": noteNum, "statsFiabilite.nbNotes": 1 },
         });
+      }
+
+      // Module 4 — Gestion des chauffeurs : note facultative et distincte,
+      // spécifique au chauffeur qui a effectué la mission (si un chauffeur
+      // avait été choisi à l'acceptation).
+      if (livraison.chauffeurUtilise && noteChauffeur) {
+        const noteChauffeurNum = Number(noteChauffeur);
+        if (noteChauffeurNum >= 1 && noteChauffeurNum <= 5) {
+          await Chauffeur.findByIdAndUpdate(livraison.chauffeurUtilise, {
+            $inc: { "statsMissions.sommeNotes": noteChauffeurNum, "statsMissions.nbNotes": 1 },
+          });
+        }
       }
     } else {
       if (livraison.evaluation.transporteurVersClient.note !== null) {
@@ -580,11 +635,32 @@ const livrerAvecPreuve = async (req, res) => {
 
     await livraison.save();
 
+    // Module 14 — Comptabilité : la facture est générée automatiquement dès
+    // que la prestation est terminée (livraison marquée "livree").
+    const clientPourFacture = await User.findById(livraison.client);
+    await Document.create({
+      livraison: livraison._id,
+      type: "facture",
+      donneesGenerees: genererFacture(livraison, clientPourFacture, req.user),
+      ajoutePar: null,
+    });
+
     // Statistiques utilisées par le score de fiabilité (Module 9) et, en aval,
     // par le score IA (Module 21) au prochain recalcul par lot.
     const update = { $inc: { "statsFiabilite.missionsCompletees": 1 } };
     if (!enRetard) update.$inc["statsFiabilite.missionsALHeure"] = 1;
     await User.findByIdAndUpdate(livraison.transporteur, update);
+
+    // Module 4 — Gestion des chauffeurs : le chauffeur redevient disponible
+    // et sa mission complétée s'ajoute à son historique.
+    if (livraison.chauffeurUtilise) {
+      const chauffeurUtilise = await Chauffeur.findById(livraison.chauffeurUtilise);
+      if (chauffeurUtilise) {
+        chauffeurUtilise.disponibilite = "disponible";
+        chauffeurUtilise.statsMissions.missionsCompletees += 1;
+        await chauffeurUtilise.save();
+      }
+    }
 
     await notifier({
       destinataire: livraison.client,

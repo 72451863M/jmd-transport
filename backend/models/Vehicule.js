@@ -45,6 +45,23 @@ const vehiculeSchema = new mongoose.Schema(
       type: Boolean,
       default: true,
     },
+    // Module 26 — Maintenance de flotte : échéances réglementaires à
+    // surveiller (jamais de date inventée par défaut — reste null tant que
+    // le transporteur ne l'a pas renseignée) et kilométrage courant, utile
+    // pour les entretiens programmés par intervalle de kilomètres (vidange
+    // tous les X km, par exemple).
+    dateProchainControleTechnique: {
+      type: Date,
+      default: null,
+    },
+    dateExpirationAssurance: {
+      type: Date,
+      default: null,
+    },
+    kilometrageActuel: {
+      type: Number,
+      default: null,
+    },
   },
   { timestamps: true }
 );

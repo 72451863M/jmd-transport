@@ -66,7 +66,7 @@ const modifierVehicule = async (req, res) => {
       return res.status(403).json({ message: "Ce véhicule ne t'appartient pas" });
     }
 
-    const { nomChauffeur, telephoneChauffeur, capaciteKg, actif } = req.body;
+    const { nomChauffeur, telephoneChauffeur, capaciteKg, actif, dateProchainControleTechnique, dateExpirationAssurance, kilometrageActuel } = req.body;
     if (nomChauffeur !== undefined) vehicule.nomChauffeur = nomChauffeur || null;
     if (telephoneChauffeur !== undefined) vehicule.telephoneChauffeur = telephoneChauffeur || null;
     if (capaciteKg !== undefined) {
@@ -74,6 +74,13 @@ const modifierVehicule = async (req, res) => {
       vehicule.capaciteKg = capaciteKg;
     }
     if (actif !== undefined) vehicule.actif = !!actif;
+    // Module 26 — Maintenance de flotte
+    if (dateProchainControleTechnique !== undefined) vehicule.dateProchainControleTechnique = dateProchainControleTechnique || null;
+    if (dateExpirationAssurance !== undefined) vehicule.dateExpirationAssurance = dateExpirationAssurance || null;
+    if (kilometrageActuel !== undefined) {
+      if (kilometrageActuel < 0) return res.status(400).json({ message: "Le kilométrage ne peut pas être négatif" });
+      vehicule.kilometrageActuel = kilometrageActuel;
+    }
 
     await vehicule.save();
     await enregistrerAudit({

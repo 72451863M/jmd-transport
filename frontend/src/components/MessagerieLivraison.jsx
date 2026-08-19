@@ -66,7 +66,7 @@ const MessagerieLivraison = ({ livraisonId, transporteurAssigne }) => {
               <div
                 style={{
                   maxWidth: "75%", padding: "6px 10px", borderRadius: 10, fontSize: 13,
-                  background: estMoi ? "#ff6600" : "#f0f0f0", color: estMoi ? "#fff" : "#1a1a1a",
+                  background: estMoi ? "rgba(244, 102, 27, 0.14)" : "var(--steel-100)", color: "var(--ink-900)",
                 }}
               >
                 {m.texte}

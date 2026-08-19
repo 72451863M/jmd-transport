@@ -14,6 +14,7 @@ function makeLivraisonDoc(data) {
 const FakeLivraison = { findById: async (id) => livraisonsDB[id] || null };
 
 const FakeUser = {
+  findById: async (id) => usersDB[id] || null,
   findByIdAndUpdate: async (id, update) => {
     const u = usersDB[id];
     if (!u) return null;
@@ -30,7 +31,9 @@ const FakeUser = {
 };
 
 const FakeNotification = { create: async () => ({}) };
+const FakeDocument = { create: async () => ({}) };
 mock("../models/Notification", FakeNotification);
+mock("../models/Document", FakeDocument);
 mock("../models/Livraison", FakeLivraison);
 mock("../models/User", FakeUser);
 const controllerPath = require.resolve("../controllers/livraisonController");

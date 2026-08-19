@@ -177,7 +177,7 @@ const Tracking = () => {
               href={`https://www.google.com/maps?q=${position.lat},${position.lng}`}
               target="_blank"
               rel="noreferrer"
-              style={{ color: "#ff6600", fontSize: 14 }}
+              style={{ color: "var(--cargo-orange)", fontSize: 14 }}
             >
               Voir sur Google Maps →
             </a>
